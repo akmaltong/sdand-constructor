@@ -23,7 +23,7 @@ interface IconRailProps {
 const sitePanel: { id: PanelId; iconSrc: string; label: string } = {
   id: 'site',
   iconSrc: '/icons/level.png',
-  label: 'Site',
+  label: 'Проект',
 }
 
 const settingsPanel: { id: PanelId; iconSrc: string; label: string } = {

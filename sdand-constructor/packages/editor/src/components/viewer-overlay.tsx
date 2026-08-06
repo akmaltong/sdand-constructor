@@ -49,42 +49,42 @@ type ProjectOwner = {
 }
 
 const levelModeLabels: Record<'stacked' | 'exploded' | 'solo', string> = {
-  stacked: 'Stacked',
-  exploded: 'Exploded',
-  solo: 'Solo',
+  stacked: 'Стопкой',
+  exploded: 'Разнесённо',
+  solo: 'Один',
 }
 
 const levelModeBadgeLabels: Record<'manual' | 'stacked' | 'exploded' | 'solo', string> = {
-  manual: 'Stack',
-  stacked: 'Stack',
-  exploded: 'Exploded',
-  solo: 'Solo',
+  manual: 'Стопка',
+  stacked: 'Стопка',
+  exploded: 'Разнесённо',
+  solo: 'Один',
 }
 
 const wallModeConfig = {
   up: {
     icon: (props: any) => (
-      <img alt="Full Height" height={28} src="/icons/room.png" width={28} {...props} />
+      <img alt="Полная высота" height={28} src="/icons/room.png" width={28} {...props} />
     ),
-    label: 'Full Height',
+    label: 'Полная высота',
   },
   cutaway: {
     icon: (props: any) => (
-      <img alt="Cutaway" height={28} src="/icons/wallcut.png" width={28} {...props} />
+      <img alt="Разрез" height={28} src="/icons/wallcut.png" width={28} {...props} />
     ),
-    label: 'Cutaway',
+    label: 'Разрез',
   },
   down: {
     icon: (props: any) => (
-      <img alt="Low" height={28} src="/icons/walllow.png" width={28} {...props} />
+      <img alt="Низкие" height={28} src="/icons/walllow.png" width={28} {...props} />
     ),
-    label: 'Low',
+    label: 'Низкие',
   },
 }
 
 const SHADING_OPTIONS = [
-  { id: 'solid', name: 'Solid', detail: 'Flat and fast — no ambient occlusion', icon: Box },
-  { id: 'rendered', name: 'Rendered', detail: 'Full ambient occlusion', icon: Sparkles },
+  { id: 'solid', name: 'Плоский', detail: 'Без затенения — быстрый режим', icon: Box },
+  { id: 'rendered', name: 'С затенением', detail: 'Полный ambient occlusion', icon: Sparkles },
 ] as const
 
 function RenderModeMenu() {
@@ -352,7 +352,7 @@ export const ViewerOverlay = ({
                       className={`truncate transition-colors ${level ? 'text-muted-foreground hover:text-foreground' : 'font-medium text-foreground'}`}
                       onClick={() => handleBreadcrumbClick('building')}
                     >
-                      {building.name || 'Building'}
+                      {building.name || 'Здание'}
                     </button>
                   </>
                 )}

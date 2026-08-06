@@ -85,11 +85,6 @@ const VIEW_MODES: { id: ViewMode; label: string; icon: React.ReactNode }[] = [
       />
     ),
   },
-  {
-    id: 'split',
-    label: 'Split',
-    icon: <Columns2 className="h-3 w-3" />,
-  },
 ]
 
 const levelModeOrder = ['stacked', 'exploded', 'solo'] as const
@@ -108,8 +103,8 @@ const wallModeConfig: Record<string, { icon: string; label: string }> = {
 }
 
 const SHADING_OPTIONS = [
-  { id: 'solid', name: 'Solid', detail: 'Flat and fast — no ambient occlusion', icon: Box },
-  { id: 'rendered', name: 'Rendered', detail: 'Full ambient occlusion', icon: Sparkles },
+  { id: 'solid', name: 'Плоский', detail: 'Без затенения — быстрый режим', icon: Box },
+  { id: 'rendered', name: 'С затенением', detail: 'Полный ambient occlusion', icon: Sparkles },
 ] as const
 
 function ViewModeControl() {
@@ -154,9 +149,9 @@ function CollapseSidebarButton() {
 
   return (
     <div className={TOOLBAR_CONTAINER}>
-      <ToolbarTooltip label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+      <ToolbarTooltip label={isCollapsed ? 'Развернуть панель' : 'Свернуть панель'}>
         <button
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={isCollapsed ? 'Развернуть панель' : 'Свернуть панель'}
           className={TOOLBAR_BTN}
           onClick={toggle}
           type="button"
@@ -249,9 +244,9 @@ function WallModeToggle() {
 // camera projection, units, render mode, edges and scene theme.
 
 const EDGE_OPTIONS = [
-  { id: 'off', name: 'Off', detail: 'No edge lines' },
-  { id: 'soft', name: 'Soft', detail: 'Faint outline of major creases' },
-  { id: 'strong', name: 'Strong', detail: 'Crisp, opaque edge lines' },
+  { id: 'off', name: 'Выкл', detail: 'Без контуров' },
+  { id: 'soft', name: 'Мягкие', detail: 'Тонкие линии рёбер' },
+  { id: 'strong', name: 'Чёткие', detail: 'Явные контуры' },
 ] as const satisfies readonly { id: EdgeMode; name: string; detail: string }[]
 
 const SUBMENU_CONTENT_CLASS = 'min-w-56 rounded-xl border-border/45 bg-popover/95 backdrop-blur-xl'
@@ -287,15 +282,15 @@ function DisplayMenu() {
 
   return (
     <DropdownMenu>
-      <ToolbarTooltip label="Display settings">
+      <ToolbarTooltip label="Настройки отображения">
         <DropdownMenuTrigger asChild>
           <button
-            aria-label="Display settings"
+            aria-label="Настройки отображения"
             className={cn(TOOLBAR_BTN, 'w-auto gap-1.5 px-2.5 text-foreground/90')}
             type="button"
           >
             <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
-            <span className="font-medium text-xs">Display</span>
+            <span className="font-medium text-xs">Вид</span>
           </button>
         </DropdownMenuTrigger>
       </ToolbarTooltip>
@@ -307,7 +302,7 @@ function DisplayMenu() {
       >
         <DropdownMenuItem onSelect={(e) => keepOpen(e, () => setShowGrid(!showGrid))}>
           <Grid2X2 className="h-4 w-4" />
-          <span>Grid</span>
+          <span>Сетка</span>
           {showGrid ? (
             <Eye className="ml-auto h-4 w-4 text-foreground" />
           ) : (
@@ -316,15 +311,15 @@ function DisplayMenu() {
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={(e) => keepOpen(e, () => setMagneticSnap(!magneticSnap))}>
           <Magnet className="h-4 w-4" />
-          <span>Magnetic snap</span>
+          <span>Магнитная привязка</span>
           <span className="ml-auto text-muted-foreground text-xs">
-            {magneticSnap ? 'On' : 'Off'}
+            {magneticSnap ? 'Вкл' : 'Выкл'}
           </span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={(e) => keepOpen(e, () => setShadows(!shadows))}>
           <Contrast className="h-4 w-4" />
-          <span>Shadows</span>
-          <span className="ml-auto text-muted-foreground text-xs">{shadows ? 'On' : 'Off'}</span>
+          <span>Тени</span>
+          <span className="ml-auto text-muted-foreground text-xs">{shadows ? 'Вкл' : 'Выкл'}</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={(e) =>
@@ -338,20 +333,20 @@ function DisplayMenu() {
             icon={cameraMode === 'perspective' ? 'icon-park-outline:perspective' : 'vaadin:grid'}
             width={16}
           />
-          <span>Camera</span>
+          <span>Камера</span>
           <span className="ml-auto text-muted-foreground text-xs">
-            {cameraMode === 'perspective' ? 'Perspective' : 'Orthographic'}
+            {cameraMode === 'perspective' ? 'Перспектива' : 'Ортография'}
           </span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={(e) => keepOpen(e, () => setUnit(unit === 'metric' ? 'imperial' : 'metric'))}
         >
           <span className="flex h-4 w-4 items-center justify-center font-semibold text-[10px]">
-            {unit === 'metric' ? 'm' : 'ft'}
+            {unit === 'metric' ? 'м' : 'фт'}
           </span>
-          <span>Units</span>
+          <span>Единицы</span>
           <span className="ml-auto text-muted-foreground text-xs">
-            {unit === 'metric' ? 'Metric' : 'Imperial'}
+            {unit === 'metric' ? 'Метры' : 'Футы'}
           </span>
         </DropdownMenuItem>
 
@@ -360,7 +355,7 @@ function DisplayMenu() {
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <activeShading.icon className="h-4 w-4" />
-            <span>Render</span>
+            <span>Рендер</span>
             <span className="ml-auto text-muted-foreground text-xs">{activeShading.name}</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className={SUBMENU_CONTENT_CLASS}>
@@ -385,7 +380,7 @@ function DisplayMenu() {
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <PenLine className="h-4 w-4" />
-            <span>Edges</span>
+            <span>Рёбра</span>
             <span className="ml-auto text-muted-foreground text-xs">{activeEdges.name}</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className={SUBMENU_CONTENT_CLASS}>
@@ -404,7 +399,7 @@ function DisplayMenu() {
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <SwatchBook className="h-4 w-4" />
-            <span>Theme</span>
+            <span>Тема</span>
             <span className="ml-auto truncate text-muted-foreground text-xs">
               {activeTheme.name}
             </span>
@@ -443,7 +438,7 @@ function WalkthroughButton() {
   const setFirstPersonMode = useEditor((state) => state.setFirstPersonMode)
 
   return (
-    <ToolbarTooltip label="Walkthrough">
+    <ToolbarTooltip label="Прогулка от первого лица">
       <button
         className={cn(
           TOOLBAR_BTN,
@@ -460,14 +455,14 @@ function WalkthroughButton() {
 
 function PreviewButton() {
   return (
-    <ToolbarTooltip label="Preview mode">
+    <ToolbarTooltip label="Режим просмотра">
       <button
         className="flex items-center gap-1.5 px-2.5 font-medium text-muted-foreground/80 text-xs transition-colors hover:bg-white/8 hover:text-foreground/90"
         onClick={() => useEditor.getState().setPreviewMode(true)}
         type="button"
       >
         <Eye className="h-3.5 w-3.5 shrink-0" />
-        <span>Preview</span>
+        <span>Просмотр</span>
       </button>
     </ToolbarTooltip>
   )
@@ -485,9 +480,6 @@ export function CommunityViewerToolbarLeft() {
 export function CommunityViewerToolbarRight() {
   return (
     <div className={TOOLBAR_CONTAINER}>
-      <LevelModeToggle />
-      <WallModeToggle />
-      <div className="my-1.5 w-px bg-border/50" />
       <DisplayMenu />
       <div className="my-1.5 w-px bg-border/50" />
       <WalkthroughButton />

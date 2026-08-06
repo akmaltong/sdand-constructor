@@ -1,9 +1,9 @@
 import type { LevelNode } from '@pascal-app/core'
 
 export function getDefaultLevelName(level: number): string {
-  if (level === 0) return 'Ground Floor'
-  if (level > 0) return `Floor ${level}`
-  return `Basement ${-level}`
+  if (level === 0) return 'Уровень 1'
+  if (level > 0) return `Уровень ${level + 1}`
+  return `Подвал ${-level}`
 }
 
 export function getLevelDisplayName(level: Pick<LevelNode, 'name' | 'level'>): string {

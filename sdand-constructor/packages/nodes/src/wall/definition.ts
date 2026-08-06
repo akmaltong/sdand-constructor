@@ -107,9 +107,9 @@ export const wallDefinition: NodeDefinition<typeof WallNode> = {
   floorplanSiblingOverrides: wallFloorplanSiblingOverrides,
 
   toolHints: [
-    { key: 'Left click', label: 'Set wall start / end' },
-    { key: 'Shift', label: 'Allow non-45° angles' },
-    { key: 'Esc', label: 'Cancel' },
+    { key: 'Left click', label: 'Начало / конец стены' },
+    { key: 'Shift', label: 'Углы не кратно 45°' },
+    { key: 'Esc', label: 'Отмена' },
   ],
 
   presentation: {

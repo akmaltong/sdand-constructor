@@ -255,7 +255,7 @@ const CameraPopover = memo(function CameraPopover({
             buttonClassName,
           )}
           onClick={(e) => e.stopPropagation()}
-          title="Camera snapshot"
+          title="Снимок камеры"
         >
           <Camera className="h-3.5 w-3.5" />
           {hasCamera && (
@@ -366,7 +366,7 @@ const ReferenceItem = memo(function ReferenceItem({
           />
         )}
         <InlineRenameInput
-          defaultName={refNode.type === 'scan' ? '3D Scan' : 'Guide Image'}
+          defaultName={refNode.type === 'scan' ? 'Площадка 3D' : 'Подложка'}
           isEditing={isEditing}
           nodeId={refNode.id}
           onStartEditing={() => setIsEditing(true)}
@@ -377,7 +377,7 @@ const ReferenceItem = memo(function ReferenceItem({
       <button
         className="z-20 flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors hover:bg-black/5 hover:text-foreground group-hover/ref:opacity-100 dark:hover:bg-white/10"
         onClick={(e) => handleDelete(refNode.id, e)}
-        title="Delete"
+        title="Удалить"
       >
         <Trash2 className="h-3 w-3" />
       </button>
@@ -544,7 +544,7 @@ const LevelReferences = memo(function LevelReferences({
                 ) : (
                   <Plus className="h-3.5 w-3.5" />
                 )}
-                {uploading ? `Uploading ${uploadingType}... ${progress}%` : 'Upload scan/floorplan'}
+                {uploading ? `Загрузка ${uploadingType}... ${progress}%` : 'Загрузить план / скан'}
               </button>
 
               <input
@@ -742,7 +742,7 @@ const LevelItem = memo(function LevelItem({
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
               onClick={(e) => e.stopPropagation()}
-              title="Camera snapshot"
+              title="Снимок камеры"
             >
               <Camera className="h-3.5 w-3.5" />
               {level.camera && (
@@ -926,7 +926,7 @@ const LevelsSection = memo(function LevelsSection({
           <div className="relative z-10 flex items-center pr-1 pl-[38px]">
             <Plus className="h-3.5 w-3.5" />
           </div>
-          <span className="truncate">Add level</span>
+          <span className="truncate">Добавить уровень</span>
         </button>
         {levels.length === 0 && (
           <div className="relative flex h-8 select-none items-center border-border/50 border-b py-0 pr-2 pl-[38px] text-muted-foreground text-xs">
@@ -934,7 +934,7 @@ const LevelsSection = memo(function LevelsSection({
             <div className="pointer-events-none absolute top-0 bottom-1/2 left-[21px] w-px bg-border/50" />
             {/* Horizontal branch line */}
             <div className="pointer-events-none absolute top-1/2 left-[21px] h-px w-[11px] bg-border/50" />
-            No levels yet
+            Уровней пока нет
           </div>
         )}
         {[...levels].reverse().map((level, index) => (
@@ -994,14 +994,14 @@ const LayerToggle = memo(function LayerToggle() {
         )}
         <div className="relative z-10 flex flex-col items-center">
           <img
-            alt="Structure"
+            alt="Структура"
             className={cn(
               'mb-1 h-6 w-6 transition-all',
               activeTab !== 'structure' && 'opacity-50 grayscale',
             )}
             src="/icons/room.png"
           />
-          Structure
+          Структура
         </div>
         <div className="absolute right-1.5 bottom-1 z-10 rounded border border-border/40 bg-background/40 px-1 py-[2px] backdrop-blur-md">
           <span className="block font-medium font-mono text-[9px] text-muted-foreground/70 leading-none">
@@ -1030,14 +1030,14 @@ const LayerToggle = memo(function LayerToggle() {
         )}
         <div className="relative z-10 flex flex-col items-center">
           <img
-            alt="Furnish"
+            alt="Стенды"
             className={cn(
               'mb-1 h-6 w-6 transition-all',
               activeTab !== 'furnish' && 'opacity-50 grayscale',
             )}
             src="/icons/couch.png"
           />
-          Furnish
+          Стенды
         </div>
         <div className="absolute right-1.5 bottom-1 z-10 rounded border border-border/40 bg-background/40 px-1 py-[2px] backdrop-blur-md">
           <span className="block font-medium font-mono text-[9px] text-muted-foreground/70 leading-none">
@@ -1067,14 +1067,14 @@ const LayerToggle = memo(function LayerToggle() {
         )}
         <div className="relative z-10 flex flex-col items-center">
           <img
-            alt="Zones"
+            alt="Зоны"
             className={cn(
               'mb-1 h-6 w-6 transition-all',
               activeTab !== 'zones' && 'opacity-50 grayscale',
             )}
             src="/icons/kitchen.png"
           />
-          Zones
+          Зоны
         </div>
         <div className="absolute right-1.5 bottom-1 z-10 rounded border border-border/40 bg-background/40 px-1 py-[2px] backdrop-blur-md">
           <span className="block font-medium font-mono text-[9px] text-muted-foreground/70 leading-none">
@@ -1183,7 +1183,7 @@ const ZoneItem = memo(function ZoneItem({ zone, isLast }: { zone: ZoneNode; isLa
             <button
               className="relative flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors hover:bg-black/5 hover:text-foreground group-hover/row:opacity-100 dark:hover:bg-white/10"
               onClick={(e) => e.stopPropagation()}
-              title="Camera snapshot"
+              title="Снимок камеры"
             >
               <Camera className="h-3 w-3" />
               {zone.camera && (
@@ -1333,7 +1333,7 @@ const ContentSection = memo(function ContentSection() {
   }
 
   if (elementChildren.length === 0) {
-    return <div className="px-3 py-4 text-muted-foreground text-sm">No elements on this level</div>
+    return <div className="px-3 py-4 text-muted-foreground text-sm">На этом уровне ничего нет</div>
   }
   return (
     <TreeNodeDragProvider>
@@ -1415,7 +1415,7 @@ const BuildingItem = memo(function BuildingItem({
             )}
             src="/icons/building.png"
           />
-          <span className="truncate font-medium text-sm">{building.name || 'Building'}</span>
+          <span className="truncate font-medium text-sm">{building.name || 'Здание'}</span>
         </div>
         <Popover
           onOpenChange={(open) => setBuildingCameraOpen(open ? building.id : null)}
@@ -1430,7 +1430,7 @@ const BuildingItem = memo(function BuildingItem({
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
               onClick={(e) => e.stopPropagation()}
-              title="Camera snapshot"
+              title="Снимок камеры"
             >
               <Camera className="h-4 w-4" />
               {building.camera && (
@@ -1571,7 +1571,7 @@ export function SitePanel({ projectId, onUploadAsset, onDeleteAsset }: SitePanel
                 )}
                 src="/icons/site-flag.png"
               />
-              <span className="font-medium text-sm">{siteNode.name || 'Site'}</span>
+              <span className="font-medium text-sm">{siteNode.name || 'Проект'}</span>
             </div>
             <CameraPopover
               buttonClassName={cn(

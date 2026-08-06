@@ -176,7 +176,7 @@ function LevelRow({
               dragHandleProps?.onClick?.(e)
             }}
             ref={dragHandleRef}
-            title="Drag to reorder"
+            title="Перетащить для сортировки"
             type="button"
           >
             <GripVertical className="h-3.5 w-3.5" />
@@ -517,7 +517,7 @@ export function FloatingLevelSelector() {
             <button
               className={cn(addButtonClass, 'top-0 -translate-y-1/2')}
               onClick={handleAddAbove}
-              title="Add level above"
+              title="Добавить уровень выше"
               type="button"
             >
               <Plus className="h-2.5 w-2.5" />
@@ -529,7 +529,7 @@ export function FloatingLevelSelector() {
             <button
               className={cn(addButtonClass, 'bottom-0 translate-y-1/2')}
               onClick={handleAddBelow}
-              title="Add level below"
+              title="Добавить уровень ниже"
               type="button"
             >
               <Plus className="h-2.5 w-2.5" />

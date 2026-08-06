@@ -358,9 +358,9 @@ export const columnDefinition: NodeDefinition<typeof ColumnNode> = {
   // registry-first path mounts this and skips the legacy `<ColumnTool>`.
   tool: () => import('./tool'),
   toolHints: [
-    { key: 'Left click', label: 'Place column' },
-    { key: 'Alt', label: 'No snap' },
-    { key: 'Esc', label: 'Cancel' },
+    { key: 'Left click', label: 'Поставить столб' },
+    { key: 'Alt', label: 'Без привязки' },
+    { key: 'Esc', label: 'Отмена' },
   ],
   floorplan: buildColumnFloorplan,
   // 2D body move routes through this kind-specific target so the column

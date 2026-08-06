@@ -309,11 +309,11 @@ export const itemDefinition: NodeDefinition<typeof ItemNode> = {
   floorplanMoveTarget: itemFloorplanMoveTarget,
 
   toolHints: [
-    { key: 'Left click', label: 'Place item' },
-    { key: 'R', label: 'Rotate counterclockwise' },
-    { key: 'T', label: 'Rotate clockwise' },
-    { key: 'Shift', label: 'Free place' },
-    { key: 'Esc', label: 'Cancel' },
+    { key: 'Left click', label: 'Поставить' },
+    { key: 'R', label: 'Повернуть против часовой' },
+    { key: 'T', label: 'Повернуть по часовой' },
+    { key: 'Shift', label: 'Свободное размещение' },
+    { key: 'Esc', label: 'Отмена' },
   ],
 
   presentation: {

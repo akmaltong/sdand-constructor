@@ -365,7 +365,7 @@ function GridSnapControl() {
           <PopoverTrigger asChild>
             <button
               aria-expanded={isOpen}
-              aria-label={`Grid snap: ${formatGridSnapStep(gridSnapStep)}`}
+              aria-label={`Привязка к сетке: ${formatGridSnapStep(gridSnapStep)}`}
               className={cn(
                 'flex h-11 w-11 flex-col items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground',
                 isOpen && 'bg-white/10 text-foreground',
@@ -379,7 +379,7 @@ function GridSnapControl() {
             </button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent side="top">Grid snap: {formatGridSnapStep(gridSnapStep)}</TooltipContent>
+        <TooltipContent side="top">Привязка к сетке: {formatGridSnapStep(gridSnapStep)}</TooltipContent>
       </Tooltip>
 
       <PopoverContent
@@ -774,7 +774,7 @@ function ReferencesControl() {
         <PopoverTrigger asChild>
           <button
             aria-expanded={isOpen}
-            aria-label="Reference settings"
+            aria-label="Настройки подложки"
             className={cn(
               'flex h-11 w-6 items-center justify-center rounded-r-lg transition-colors',
               anyVisible

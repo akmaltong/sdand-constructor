@@ -1,0 +1,30 @@
+# — сгенерированные/установочные артефакты —
+node_modules/
+.next/
+.turbo/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# — исходные материалы, не входящие в кодовую базу —
+# Распакованный zip Pascal Editor, используется только как reference
+editor-0.9.1/
+editor-0.9.1.zip
+
+# ТЗ уже расшифровано в docs/SPEC.md — оригиналы фоток не отслеживаем
+photo_2026-*.jpg
+
+# Оригинал модели площадки — рабочая копия в sdand-constructor/apps/editor/public/venues/
+/SM_GOSTINKA.bin
+/SM_GOSTINKA.gltf
+
+# Windows shortcut на upstream, не наш файл
+pascalorg-editor.url
+
+# Локальные IDE/агент конфиги
+.claude/settings.local.json
+.claude/**/skills

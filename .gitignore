@@ -18,12 +18,17 @@ editor-0.9.1.zip
 # ТЗ уже расшифровано в docs/SPEC.md — оригиналы фоток не отслеживаем
 photo_2026-*.jpg
 
-# Оригинал модели площадки — рабочая копия в sdand-constructor/apps/editor/public/venues/
+# Оригиналы модели площадки — рабочая копия в sdand-constructor/apps/editor/public/venues/
 /SM_GOSTINKA.bin
 /SM_GOSTINKA.gltf
+/SM_GOSTINKA.glb
 
 # Windows shortcut на upstream, не наш файл
 pascalorg-editor.url
+
+# Внешний клон Interactive-Equipment-Catalog (модели скопированы в
+# sdand-constructor/apps/editor/public/equipment/, сам клон не нужен)
+sdand-constructor/external-equipment-catalog/
 
 # Локальные IDE/агент конфиги
 .claude/settings.local.json

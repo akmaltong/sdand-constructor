@@ -2,11 +2,15 @@ import { loadAssetUrl } from '@pascal-app/core'
 
 export const ASSETS_CDN_URL = process.env.NEXT_PUBLIC_ASSETS_CDN_URL || 'https://editor.pascal.app'
 
+function getAssetsCdnUrl() {
+  return process.env.NEXT_PUBLIC_ASSETS_CDN_URL || ASSETS_CDN_URL
+}
+
 /**
  * Resolves an asset URL to the appropriate format:
  * - If URL starts with http:// or https://, return as-is (external URL)
  * - If URL starts with asset://, resolve from IndexedDB storage
- * - If URL starts with /, prepend CDN URL (absolute path)
+ * - If URL starts with /, return as-is when no CDN is configured, otherwise prepend CDN URL
  * - Otherwise, prepend CDN URL (relative path)
  */
 export async function resolveAssetUrl(url: string | undefined | null): Promise<string | null> {
@@ -27,9 +31,19 @@ export async function resolveAssetUrl(url: string | undefined | null): Promise<s
     return loadAssetUrl(url)
   }
 
+  // Preserve local editor public assets referenced by absolute path.
+  if (url.startsWith('/equipment/')) {
+    return url
+  }
+
+  // If there's no CDN configured, keep app-local absolute paths as-is
+  if (url.startsWith('/') && !process.env.NEXT_PUBLIC_ASSETS_CDN_URL) {
+    return url
+  }
+
   // Absolute or relative path - prepend CDN URL
   const normalizedPath = url.startsWith('/') ? url : `/${url}`
-  return `${ASSETS_CDN_URL}${normalizedPath}`
+  return `${getAssetsCdnUrl()}${normalizedPath}`
 }
 
 /**
@@ -58,7 +72,17 @@ export function resolveCdnUrl(url: string | undefined | null): string | null {
     return null
   }
 
+  // Preserve local editor public assets referenced by absolute path.
+  if (url.startsWith('/equipment/')) {
+    return url
+  }
+
+  // If there's no CDN configured, keep app-local absolute paths as-is
+  if (url.startsWith('/') && !process.env.NEXT_PUBLIC_ASSETS_CDN_URL) {
+    return url
+  }
+
   // Absolute or relative path - prepend CDN URL
   const normalizedPath = url.startsWith('/') ? url : `/${url}`
-  return `${ASSETS_CDN_URL}${normalizedPath}`
+  return `${getAssetsCdnUrl()}${normalizedPath}`
 }

@@ -6,7 +6,7 @@ import { useEffect } from 'react'
 // «Гостинка» — дефолтная площадка. Кладём под первый Level один Scan-узел
 // со ссылкой на локальный gltf. Scan игнорирует raycast и bbox-коллизии,
 // так что коллизии стендов внутри работают корректно (см. packages/nodes/src/scan/renderer.tsx).
-const VENUE_URL = '/venues/SM_GOSTINKA.gltf'
+const VENUE_URL = '/venues/SM_GOSTINKA.glb'
 const VENUE_TAG = 'sdand:default-venue'
 
 function nodeHasDeadBlobUrl(n: unknown): boolean {
@@ -61,11 +61,28 @@ export function DefaultVenueSeeder() {
       .map(([id]) => id)
     for (const id of dead) state.deleteNode(id as never)
 
-    // 2) Seed default venue: если её ещё нет — создаём Scan-ноду под Level.
-    const alreadySeeded = Object.values(nodesRecord).some(
-      (n) => n.type === 'scan' && (n.metadata as { tag?: string } | undefined)?.tag === VENUE_TAG,
+    // 2) Seed default venue: если её ещё нет или она старого формата — создаём Scan-ноду под Level.
+    const defaultVenueScans = Object.entries(nodesRecord).filter(
+      ([, n]) => n.type === 'scan' && (n.metadata as { tag?: string } | undefined)?.tag === VENUE_TAG,
     )
-    if (alreadySeeded) return
+
+    const validDefaultVenueExists = defaultVenueScans.some(([, n]) => {
+      const url = typeof n.url === 'string' ? n.url : typeof n.asset?.src === 'string' ? n.asset.src : null
+      return url === VENUE_URL
+    })
+
+    const invalidDefaultVenueIds = defaultVenueScans
+      .filter(([, n]) => {
+        const url = typeof n.url === 'string' ? n.url : typeof n.asset?.src === 'string' ? n.asset.src : null
+        return url !== VENUE_URL
+      })
+      .map(([id]) => id)
+
+    for (const id of invalidDefaultVenueIds) {
+      state.deleteNode(id as never)
+    }
+
+    if (validDefaultVenueExists) return
 
     const level = Object.entries(nodesRecord).find(([, n]) => n.type === 'level')
     if (!level) return

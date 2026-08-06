@@ -53,7 +53,7 @@ const getMaterialForOriginal = (
     return glassMaterial
   }
   if (!textures) return createSurfaceRoleMaterial('furnishing', colorPreset)
-  return baseMaterial(shading)
+  return original
 }
 
 const BrokenItemFallback = ({ node }: { node: ItemNode }) => {

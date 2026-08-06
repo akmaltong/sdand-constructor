@@ -299,9 +299,12 @@ const OBORUDOVANIE: AssetInput[] = [
 ]
 
 // Модели Interactive Equipment Catalog (репо akmaltong), лежат локально в
-// apps/editor/public/equipment/. Категоризация: сенсорные/LCD/LED-панели →
-// Экраны, аркады/VR/платформы/интерактивные стойки → Стойки. Размеры —
-// приблизительные оценки для placement, уточним по факту после теста.
+// apps/editor/public/equipment/. Размеры и offset измерены скриптом
+// scratchpad/measure-glb.mjs из реальных bbox моделей: Unreal-экспорт
+// сохранил все mesh в мировых координатах исходной сцены (высота +8–20 м
+// от origin) — без корректировки offset модель улетала под потолок.
+// offset = [-center.x, -bb.min.y, -center.z] ставит pivot в центр нижней
+// грани, поэтому item встаёт на пол и центрируется под курсором.
 function equipmentThumb(label: string, color = '3b82f6'): string {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90'>
     <rect width='90' height='90' fill='#111827'/>
@@ -316,6 +319,7 @@ function equipAsset(
   name: string,
   category: AssetInput['category'],
   dimensions: [number, number, number],
+  offset: [number, number, number],
   thumbLabel: string,
   color = '3b82f6',
 ): AssetInput {
@@ -327,7 +331,7 @@ function equipAsset(
     thumbnail: equipmentThumb(thumbLabel, color),
     src: `/equipment/${file}`,
     dimensions,
-    offset: [0, 0, 0],
+    offset,
     rotation: [0, 0, 0],
     scale: [1, 1, 1],
     source: 'library',
@@ -336,26 +340,26 @@ function equipAsset(
 
 // Экраны (bathroom): LCD/LED/сенсорные панели
 const EQUIPMENT_SCREENS: AssetInput[] = [
-  equipAsset('lcd_65.glb', 'LCD 65"', 'bathroom', [1.5, 1.9, 0.5], 'LCD 65', 'ec4899'),
-  equipAsset('lcd_sphere_d1000.glb', 'LCD-сфера Ø1000', 'bathroom', [1.0, 1.6, 1.0], 'LCD SPH', 'ec4899'),
-  equipAsset('led_panel_1x2.5_p1.9.glb', 'LED панель 1×2.5', 'bathroom', [1.0, 2.5, 0.2], 'LED S', 'f97316'),
-  equipAsset('led_panel_4x2.5_p1.9.glb', 'LED панель 4×2.5', 'bathroom', [4.0, 2.5, 0.2], 'LED L', 'f97316'),
-  equipAsset('touch_11.glb', 'Touch 11"', 'bathroom', [0.3, 1.2, 0.4], 'T11', '3b82f6'),
-  equipAsset('touch_43.glb', 'Touch 43"', 'bathroom', [1.0, 1.6, 0.5], 'T43', '3b82f6'),
-  equipAsset('touch_43_art.glb', 'Touch 43" арт', 'bathroom', [1.0, 1.7, 0.5], 'T43 ART', '3b82f6'),
-  equipAsset('touch_55.glb', 'Touch 55"', 'bathroom', [1.3, 1.9, 0.5], 'T55', '3b82f6'),
-  equipAsset('touch_55_double.glb', 'Touch 55" двойной', 'bathroom', [2.6, 1.9, 0.5], 'T55×2', '3b82f6'),
-  equipAsset('touch_55_holobox.glb', 'Touch 55" голобокс', 'bathroom', [1.5, 1.8, 1.5], 'HOLO', '8b5cf6'),
-  equipAsset('touch_55_table_art.glb', 'Touch 55" стол-арт', 'bathroom', [1.5, 1.0, 1.0], 'T55 TBL', '3b82f6'),
-  equipAsset('touch_55_transparency.glb', 'Touch 55" прозрачный', 'bathroom', [1.3, 1.9, 0.5], 'T55 TR', '06b6d4'),
+  equipAsset('lcd_65.glb', 'LCD 65"', 'bathroom', [0.042, 0.755, 1.358], [-0.307, -20.05, -20.423], 'LCD 65', 'ec4899'),
+  equipAsset('lcd_sphere_d1000.glb', 'LCD-сфера Ø1000', 'bathroom', [1.0, 1.225, 1.0], [-0.296, -19.117, -17.531], 'LCD SPH', 'ec4899'),
+  equipAsset('led_panel_1x2.5_p1.9.glb', 'LED панель 1×2.5', 'bathroom', [0.815, 2.575, 1.008], [-0.35, -19.103, -14.562], 'LED S', 'f97316'),
+  equipAsset('led_panel_4x2.5_p1.9.glb', 'LED панель 4×2.5', 'bathroom', [0.815, 2.575, 4.011], [-0.35, -19.103, -11.119], 'LED L', 'f97316'),
+  equipAsset('touch_11.glb', 'Touch 11"', 'bathroom', [0.774, 0.985, 0.995], [-0.111, -16.137, -20.562], 'T11', '3b82f6'),
+  equipAsset('touch_43.glb', 'Touch 43"', 'bathroom', [0.774, 1.16, 1.042], [-0.124, -16.112, -17.624], 'T43', '3b82f6'),
+  equipAsset('touch_43_art.glb', 'Touch 43" арт', 'bathroom', [0.774, 1.166, 1.176], [-0.226, -16.143, -14.686], 'T43 ART', '3b82f6'),
+  equipAsset('touch_55.glb', 'Touch 55"', 'bathroom', [0.461, 1.88, 0.763], [-0.314, -12.246, -20.569], 'T55', '3b82f6'),
+  equipAsset('touch_55_double.glb', 'Touch 55" двойной', 'bathroom', [0.461, 1.88, 0.763], [-0.314, -12.246, -17.631], 'T55×2', '3b82f6'),
+  equipAsset('touch_55_holobox.glb', 'Touch 55" голобокс', 'bathroom', [0.689, 2.177, 0.79], [-0.364, -11.966, -11.283], 'HOLO', '8b5cf6'),
+  equipAsset('touch_55_table_art.glb', 'Touch 55" стол-арт', 'bathroom', [0.966, 1.022, 2.504], [-0.418, -16.14, -11.206], 'T55 TBL', '3b82f6'),
+  equipAsset('touch_55_transparency.glb', 'Touch 55" прозрачный', 'bathroom', [0.355, 1.782, 0.766], [-0.246, -12.304, -14.624], 'T55 TR', '06b6d4'),
 ]
 
 // Стойки (kitchen): аркады, платформы, VR, приставки
 const EQUIPMENT_STANDS: AssetInput[] = [
-  equipAsset('arcade.glb', 'Аркадный автомат', 'kitchen', [0.8, 2.0, 1.0], 'ARCADE', 'eab308'),
-  equipAsset('vr_ar.glb', 'VR/AR стойка', 'kitchen', [1.0, 2.0, 1.0], 'VR/AR', '8b5cf6'),
-  equipAsset('platforma_rgb.glb', 'RGB-платформа', 'kitchen', [3.0, 0.15, 3.0], 'RGB', 'd946ef'),
-  equipAsset('xbox_kinect.glb', 'Xbox Kinect', 'kitchen', [0.3, 0.06, 0.06], 'KINECT', '22c55e'),
+  equipAsset('arcade.glb', 'Аркадный автомат', 'kitchen', [0.746, 1.542, 0.844], [-0.23, -8.868, -11.287], 'ARCADE', 'eab308'),
+  equipAsset('vr_ar.glb', 'VR/AR стойка', 'kitchen', [0.774, 1.397, 0.995], [-0.236, -9.059, -14.683], 'VR/AR', '8b5cf6'),
+  equipAsset('platforma_rgb.glb', 'RGB-платформа', 'kitchen', [1.042, 0.028, 1.042], [-0.2, -9.467, -17.56], 'RGB', 'd946ef'),
+  equipAsset('xbox_kinect.glb', 'Xbox Kinect', 'kitchen', [0.225, 0.104, 0.56], [-0.264, -9.678, -20.625], 'KINECT', '22c55e'),
 ]
 
 export const CATALOG_ITEMS: AssetInput[] = [

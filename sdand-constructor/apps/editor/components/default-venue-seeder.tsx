@@ -1,6 +1,7 @@
 'use client'
 
 import { ScanNode, useScene } from '@pascal-app/core'
+import { CATALOG_ITEMS } from '@pascal-app/editor'
 import { useEffect } from 'react'
 
 // «Гостинка» — дефолтная площадка. Кладём под первый Level один Scan-узел
@@ -37,13 +38,26 @@ export function DefaultVenueSeeder() {
     ).length
     ;(globalThis as { __sdandNodes?: unknown }).__sdandNodes = Object.entries(state.nodes).map(
       ([id, n]) => {
-        const rec = n as { type?: string; parentId?: string | null; url?: unknown; metadata?: unknown; asset?: { src?: unknown } }
+        const rec = n as {
+          type?: string
+          parentId?: string | null
+          position?: unknown
+          rotation?: unknown
+          url?: unknown
+          metadata?: unknown
+          asset?: { src?: unknown; name?: unknown; dimensions?: unknown; offset?: unknown }
+        }
         return {
           id,
           type: rec.type,
           parentId: rec.parentId,
+          position: rec.position,
+          rotation: rec.rotation,
           url: typeof rec.url === 'string' ? rec.url : undefined,
           src: typeof rec.asset?.src === 'string' ? rec.asset.src : undefined,
+          assetName: rec.asset?.name,
+          assetDims: rec.asset?.dimensions,
+          assetOffset: rec.asset?.offset,
           tag: (rec.metadata as { tag?: string } | undefined)?.tag,
         }
       },
@@ -60,6 +74,25 @@ export function DefaultVenueSeeder() {
       .filter(([, n]) => nodeHasDeadBlobUrl(n))
       .map(([id]) => id)
     for (const id of dead) state.deleteNode(id as never)
+
+    // 1b) Миграция asset. При обновлении CATALOG_ITEMS (например, поправили
+    //     dimensions/offset модели) старые item-ноды хранят снапшот asset на
+    //     момент создания. Находим их по src и обновляем asset in-place —
+    //     иначе placement будет с устаревшими размерами и модель уедет от pivot.
+    for (const [id, n] of Object.entries(nodesRecord)) {
+      const rec = n as { type?: string; asset?: { src?: unknown; dimensions?: unknown; offset?: unknown } }
+      if (rec.type !== 'item' || typeof rec.asset?.src !== 'string') continue
+      const fresh = CATALOG_ITEMS.find((c) => c.src === rec.asset!.src)
+      if (!fresh) continue
+      const staleDims = JSON.stringify(rec.asset.dimensions)
+      const freshDims = JSON.stringify(fresh.dimensions)
+      const staleOffset = JSON.stringify(rec.asset.offset)
+      const freshOffset = JSON.stringify(fresh.offset)
+      if (staleDims === freshDims && staleOffset === freshOffset) continue
+      state.updateNode(id as never, {
+        asset: { ...(rec.asset as object), ...fresh },
+      } as never)
+    }
 
     // 2) Seed default venue: если её ещё нет или она старого формата — создаём Scan-ноду под Level.
     const defaultVenueScans = Object.entries(nodesRecord).filter(

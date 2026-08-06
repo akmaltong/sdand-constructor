@@ -3,7 +3,13 @@
 import { type ScanNode, useRegistry } from '@pascal-app/core'
 import { useAssetUrl, useGLTFKTX2, useViewer } from '@pascal-app/viewer'
 import { Suspense, useMemo, useRef } from 'react'
-import { Color, type Group, type Material, type Mesh, type Texture } from 'three'
+import { Color, type Group, type Material, type Mesh, type Object3D, type Texture } from 'three'
+
+// Sdand: имена узлов gltf, которые надо скрыть в скан-модели.
+// В SM_GOSTINKA `Potolok001` — контейнер с балками крыши и потолочной
+// решёткой (Plane013…Plane023). Убираем его целиком, чтобы вид сверху
+// показывал пустой зал.
+const HIDDEN_NODE_NAMES = new Set(['Potolok001'])
 
 export const ScanRenderer = ({ node }: { node: ScanNode }) => {
   const showScans = useViewer((s) => s.showScans)
@@ -64,6 +70,12 @@ const ScanModel = ({ url, opacity }: { url: string; opacity: number }) => {
       }
       material.needsUpdate = true
     }
+
+    // Скрыть контейнеры по имени (балки/решётка потолка). Прячем сам узел —
+    // всё дерево под ним не рендерится, включая Plane013…Plane023.
+    scene.traverse((child: Object3D) => {
+      if (HIDDEN_NODE_NAMES.has(child.name)) child.visible = false
+    })
 
     scene.traverse((child: any) => {
       if ((child as Mesh).isMesh) {

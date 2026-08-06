@@ -68,6 +68,14 @@ export const SiteRenderer = ({ node }: { node: SiteNode }) => {
     return material
   }, [bgColor])
 
+  // Sdand: если в сцене есть Scan-нода (импортированная площадка), её пол —
+  // фактический visual ground, а встроенный site ground fill + boundary line
+  // становятся лишним белым ромбом поверх реального пола. В этом случае
+  // прячем ground/boundary целиком.
+  const hasScanVenue = useScene((state) =>
+    Object.values(state.nodes).some((n) => n.type === 'scan'),
+  )
+
   // Cache slab polygon references to keep the selector stable across unrelated store updates
   const slabPolygonsCache = useRef<[number, number][][]>([])
   const slabPolygons = useScene((state: S) => {
@@ -148,8 +156,9 @@ export const SiteRenderer = ({ node }: { node: SiteNode }) => {
         <NodeRenderer key={childId} nodeId={childId as AnyNodeId} />
       ))}
 
-      {/* Ground fill: site polygon with slab holes, occludes below-grade geometry */}
-      {groundShape && (
+      {/* Ground fill + boundary line — рисуем только когда своей 3D-площадки
+          в сцене ещё нет. При наличии Scan-ноды они дублируют её пол. */}
+      {!hasScanVenue && groundShape && (
         <mesh
           material={groundMaterial}
           position={[0, -0.05, 0]}
@@ -159,12 +168,12 @@ export const SiteRenderer = ({ node }: { node: SiteNode }) => {
           <shapeGeometry args={[groundShape]} />
         </mesh>
       )}
-
-      {/* Simple boundary line */}
-      {/* @ts-ignore */}
-      <line frustumCulled={false} geometry={lineGeometry} renderOrder={9}>
-        <lineBasicMaterial color="#f59e0b" linewidth={2} opacity={0.6} transparent />
-      </line>
+      {!hasScanVenue && (
+        // @ts-ignore
+        <line frustumCulled={false} geometry={lineGeometry} renderOrder={9}>
+          <lineBasicMaterial color="#f59e0b" linewidth={2} opacity={0.6} transparent />
+        </line>
+      )}
     </group>
   )
 }

@@ -368,18 +368,6 @@ const CAMERA_SHORTCUT_KEY_META: Record<string, { icon?: string; label: string; t
   },
 }
 
-function readCameraControlsHintDismissed(): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  try {
-    return window.localStorage.getItem(CAMERA_CONTROLS_HINT_DISMISSED_STORAGE_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
 function writeCameraControlsHintDismissed(dismissed: boolean) {
   if (typeof window === 'undefined') {
     return
@@ -578,7 +566,13 @@ function PaintCursorBadge({
 // grid lines when the user picks a finer snap (0.25 / 0.1 / 0.05).
 function SnapAwareGrid() {
   const gridSnapStep = useEditor((s) => s.gridSnapStep)
-  return <Grid cellColor="#aaa" cellSize={gridSnapStep} fadeDistance={500} sectionColor="#ccc" />
+  // Явный якорь на y=0 через group — Grid drei рисует в кадре родителя,
+  // а группа гарантирует, что сетка всегда на уровне пола.
+  return (
+    <group position={[0, 0, 0]}>
+      <Grid cellColor="#aaa" cellSize={gridSnapStep} fadeDistance={500} sectionColor="#ccc" />
+    </group>
+  )
 }
 
 // ── Viewer scene content: memoized so <Viewer> doesn't re-render on mode/viewMode changes ──
@@ -849,10 +843,6 @@ const ViewerCanvas = memo(function ViewerCanvas({
     }
   }, [setFloorplanPaneRatio])
 
-  useEffect(() => {
-    setIsCameraControlsHintVisible(!readCameraControlsHintDismissed())
-  }, [])
-
   const dismissCameraControlsHint = useCallback(() => {
     setIsCameraControlsHintVisible(false)
     writeCameraControlsHintDismissed(true)
@@ -970,6 +960,8 @@ export default function Editor({
   const [hasLoadedInitialScene, setHasLoadedInitialScene] = useState(false)
   const [sceneReadyKey, setSceneReadyKey] = useState(0)
   const [isViewerSceneReady, setIsViewerSceneReady] = useState(false)
+  const [webgpuError, setWebgpuError] = useState<string | null>(null)
+  const [loaderWatchdogFired, setLoaderWatchdogFired] = useState(false)
   const isPreviewMode = useEditor((s) => s.isPreviewMode)
   const isCaptureMode = useEditor((s) => s.isCaptureMode)
 
@@ -1032,6 +1024,41 @@ export default function Editor({
     }
   }, [onLoad, isLoadingSceneRef])
 
+  // Surface a clear error instead of an infinite loader when the browser can't
+  // create a WebGPU adapter (WebGPU unsupported, disabled, or hardware
+  // acceleration turned off).
+  useEffect(() => {
+    let cancelled = false
+    async function check() {
+      try {
+        const gpu = (navigator as unknown as { gpu?: { requestAdapter: () => Promise<unknown> } })
+          .gpu
+        if (!gpu) {
+          if (!cancelled) {
+            setWebgpuError(
+              'WebGPU недоступен в этом браузере. Обновите браузер или включите аппаратное ускорение в настройках.',
+            )
+          }
+          return
+        }
+        const adapter = await gpu.requestAdapter()
+        if (!adapter && !cancelled) {
+          setWebgpuError(
+            'WebGPU недоступен: не удалось создать адаптер GPU. Включите аппаратное ускорение и перезапустите браузер.',
+          )
+        }
+      } catch {
+        if (!cancelled) {
+          setWebgpuError('Не удалось инициализировать WebGPU. Попробуйте другой браузер.')
+        }
+      }
+    }
+    check()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Apply preview scene when version preview mode changes
   useEffect(() => {
     if (isVersionPreviewMode && previewScene) {
@@ -1062,6 +1089,20 @@ export default function Editor({
   }, [])
 
   const showLoader = isLoading || isSceneLoading || !hasLoadedInitialScene || !isViewerSceneReady
+
+  // If the viewer canvas never reports ready (missing/blocked WebGPU, broken GPU
+  // drivers, renderer init failure), the loader would otherwise spin forever.
+  // Watchdog reveals the UI after a grace period so the app can't hang silently.
+  useEffect(() => {
+    if (!showLoader) return
+    const t = window.setTimeout(() => {
+      console.warn('[editor] Scene readiness watchdog fired — revealing UI after timeout')
+      setLoaderWatchdogFired(true)
+    }, 25000)
+    return () => window.clearTimeout(t)
+  }, [showLoader])
+
+  const isLoaderVisible = showLoader && !loaderWatchdogFired
 
   const firstPersonPreviousLevelRef = useRef(useViewer.getState().selection.levelId)
   const wasFirstPersonModeRef = useRef(isFirstPersonMode)
@@ -1131,6 +1172,21 @@ export default function Editor({
     />
   )
 
+  if (webgpuError) {
+    return (
+      <div className="dark flex h-full w-full items-center justify-center bg-neutral-100 p-6 text-foreground">
+        <div className="max-w-md rounded-xl border border-border bg-card p-6 text-center shadow-sm">
+          <div className="text-3xl">⚠️</div>
+          <h2 className="mt-3 text-lg font-semibold">3D-редактор не запустился</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{webgpuError}</p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Для работы нужен Chrome/Edge последней версии с включённым аппаратным ускорением.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   // ── V2 layout ──
   if (layoutVersion === 'v2') {
     const tabMap = new Map(sidebarTabs?.map((t) => [t.id, t]) ?? [])
@@ -1161,7 +1217,7 @@ export default function Editor({
 
     return (
       <>
-        {showLoader && (
+        {isLoaderVisible && (
           <div className="fixed inset-0 z-60">
             <SceneLoader className="bg-background" />
           </div>
@@ -1226,7 +1282,7 @@ export default function Editor({
 
   return (
     <div className="dark flex h-full w-full gap-3 bg-neutral-100 p-3 text-foreground">
-      {showLoader && (
+      {isLoaderVisible && (
         <div className="fixed inset-0 z-60">
           <SceneLoader className="bg-background" />
         </div>

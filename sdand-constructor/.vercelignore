@@ -1,0 +1,12 @@
+# Build artifacts / deps — Vercel builds from source on its side
+node_modules
+.turbo
+.next
+**/.next
+**/next-env.d.ts
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.vercel

@@ -19,7 +19,8 @@ function buildScanFloorplan(node: ScanNode): FloorplanGeometry | null {
     y: node.position[2] + fp.z * s,
     width: fp.width * s,
     height: fp.depth * s,
-    fill: '#f3f4f6',
+    // Без fill — метровая сетка проступает сквозь пол здания.
+    fill: 'none',
     stroke: '#9ca3af',
     strokeWidth: 1.2,
     vectorEffect: 'non-scaling-stroke',

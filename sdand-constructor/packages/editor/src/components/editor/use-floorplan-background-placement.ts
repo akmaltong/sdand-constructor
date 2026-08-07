@@ -41,6 +41,10 @@ type UseFloorplanBackgroundPlacementArgs = {
   handleCeilingPlacementPoint: (point: WallPlanPoint) => void
   handleSlabPlacementPoint: (point: WallPlanPoint) => void
   handleWallPlacementPoint: (point: WallPlanPoint, options?: { singleWall?: boolean }) => void
+  handleWallItemPlacementClick: (
+    planPoint: WallPlanPoint,
+    nativeEvent: ReactMouseEvent<SVGSVGElement>,
+  ) => boolean
   handleZonePlacementPoint: (point: WallPlanPoint) => void
   isCeilingBuildActive: boolean
   isCeilingItemPlacementActive: boolean
@@ -50,6 +54,7 @@ type UseFloorplanBackgroundPlacementArgs = {
   isPolygonBuildActive: boolean
   isRoofBuildActive: boolean
   isWallBuildActive: boolean
+  isWallItemPlacementActive: boolean
   isZoneBuildActive: boolean
   roofDraftStart: WallPlanPoint | null
   setCursorPoint: React.Dispatch<React.SetStateAction<WallPlanPoint | null>>
@@ -97,6 +102,7 @@ export function useFloorplanBackgroundPlacement({
   handleCeilingPlacementPoint,
   handleSlabPlacementPoint,
   handleWallPlacementPoint,
+  handleWallItemPlacementClick,
   handleZonePlacementPoint,
   isCeilingBuildActive,
   isCeilingItemPlacementActive,
@@ -106,6 +112,7 @@ export function useFloorplanBackgroundPlacement({
   isPolygonBuildActive,
   isRoofBuildActive,
   isWallBuildActive,
+  isWallItemPlacementActive,
   isZoneBuildActive,
   roofDraftStart,
   setCursorPoint,
@@ -278,6 +285,15 @@ export function useFloorplanBackgroundPlacement({
         return true
       }
 
+      // Wall-attached item placement (artwork, TVs, sconces). Routes the
+      // click through `wall:click` instead of `grid:click` so the placement
+      // strategy parents the new item to the wall — mirrors the pointer-move
+      // handler in `floorplan-panel` and the opening branch above.
+      if (isWallItemPlacementActive) {
+        handleWallItemPlacementClick(planPoint, event)
+        return true
+      }
+
       // Ceiling-attached item placement (lights, fans). Routes the click
       // through `ceiling:click` instead of `grid:click` so the placement
       // strategy parents the new item to the ceiling at the correct
@@ -312,6 +328,7 @@ export function useFloorplanBackgroundPlacement({
       handleCeilingItemPlacementClick,
       handleCeilingPlacementPoint,
       handleSlabPlacementPoint,
+      handleWallItemPlacementClick,
       handleZonePlacementPoint,
       isCeilingBuildActive,
       isCeilingItemPlacementActive,
@@ -321,6 +338,7 @@ export function useFloorplanBackgroundPlacement({
       isPolygonBuildActive,
       isRoofBuildActive,
       isWallBuildActive,
+      isWallItemPlacementActive,
       isZoneBuildActive,
       roofDraftStart,
       setCursorPoint,

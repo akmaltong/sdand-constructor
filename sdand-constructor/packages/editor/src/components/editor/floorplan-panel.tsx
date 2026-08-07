@@ -207,6 +207,11 @@ const FLOORPLAN_MARQUEE_DRAG_THRESHOLD_PX = 4
 const FLOORPLAN_ACTION_MENU_HORIZONTAL_PADDING = 60
 const FLOORPLAN_ACTION_MENU_MIN_ANCHOR_Y = 56
 const FLOORPLAN_DEFAULT_WINDOW_LOCAL_Y = 1.5
+// Default vertical centre (metres above floor) for NEW wall-attached items
+// placed from the 2D floor plan. The 2D plan has no cursor height, so the
+// item's wall-local Y is derived from its own height instead. `autoAdjustY`
+// in the wall spatial grid clamps it into the wall bounds anyway.
+const FLOORPLAN_DEFAULT_WALL_ITEM_CENTER_Y = 1.25
 
 // Match the guide plane footprint used in the 3D renderer so the 2D overlay aligns.
 const FLOORPLAN_GUIDE_BASE_WIDTH = 10
@@ -5409,6 +5414,16 @@ export function FloorplanPanel() {
   const isCeilingItemMoveActive =
     movingNode?.type === 'item' && movingNode.asset.attachTo === 'ceiling'
   const isCeilingItemPlacementActive = isCeilingItemBuildActive || isCeilingItemMoveActive
+  // Wall-attached items (artwork, TVs, sconces). The 3D viewer drives these
+  // via `wall:enter/move/click` raycast events on the wall meshes; the 2D
+  // floor plan has no wall meshes, so we synthesise the same events when the
+  // cursor is near a wall — mirroring the ceiling-item branch. Build mode
+  // only: moving existing wall items already re-anchors via the 2D move
+  // overlay (`buildWallItemSession` in `floorplan-move.ts`).
+  const isWallItemBuildActive =
+    mode === 'build' &&
+    tool === 'item' &&
+    (selectedItem?.attachTo === 'wall' || selectedItem?.attachTo === 'wall-side')
   // Any registry-driven kind whose tool is currently active. Lets the floor
   // plan emit `grid:click` / `grid:move` events to that kind's placement tool
   // (shelf today; future Phase 5 kinds the moment they register a `tool`).
@@ -5580,7 +5595,10 @@ export function FloorplanPanel() {
     !movingNode &&
     !movingFenceEndpoint &&
     isFloorplanItemContextActive
-  const visibleSitePolygon = displaySitePolygon
+  // Sdand: скрываем 2D-редактор property line (фиолетовый пунктирный
+  // прямоугольник с ручками и метками расстояний). Для конфигуратора стендов
+  // границы участка — контур зала, а не пользовательский полигон.
+  const visibleSitePolygon = null as typeof displaySitePolygon | null
   const canUseSiteBoundaryVertexHandles =
     visibleSitePolygon !== null && (isSiteEditActive || mode === 'select')
   const isSiteBoundaryHighlighted = isSiteEditActive || siteVertexDragState !== null
@@ -8337,6 +8355,124 @@ export function FloorplanPanel() {
     ],
   )
 
+  // Wall id we've already emitted `wall:enter` for in the CURRENT wall-item
+  // placement session. Separate from `hoveredWallIdRef` (used by the door /
+  // window opening branch) so a stale opening hover can't make the first
+  // wall-item move emit `wall:move` without the `wall:enter` the coordinator
+  // needs to lazily create the draft.
+  const wallItemEnteredWallIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!isWallItemBuildActive && wallItemEnteredWallIdRef.current) {
+      emitFloorplanWallLeave(wallItemEnteredWallIdRef.current)
+      wallItemEnteredWallIdRef.current = null
+    }
+  }, [isWallItemBuildActive, emitFloorplanWallLeave])
+
+  // Build a synthetic `WallEvent` from a 2D plan point + closest-wall hit so
+  // the placement coordinator's existing wall handlers can drive a wall-
+  // attached item placement from the floor plan. The normal is [0,0,1]
+  // (wall-local front face — the convention `findClosestWallPoint` and the
+  // opening branch already use). The wall-local Y is derived from the item's
+  // own height (the 2D plan has no cursor height); the validator clamps it.
+  const buildFloorplanWallItemEventPayload = useCallback(
+    (
+      closest: ReturnType<typeof findClosestWallPoint>,
+      planPoint: WallPlanPoint,
+      nativeEvent?: ReactMouseEvent<SVGSVGElement> | ReactPointerEvent<SVGSVGElement>,
+    ) => {
+      if (!closest) return null
+      const wall = closest.wall
+      const dx = wall.end[0] - wall.start[0]
+      const dz = wall.end[1] - wall.start[1]
+      const length = Math.sqrt(dx * dx + dz * dz) || 1
+      const along = closest.t * length
+
+      const itemHeight = selectedItem?.dimensions?.[1] ?? 1
+      const localY = Math.max(0.05, FLOORPLAN_DEFAULT_WALL_ITEM_CENTER_Y - itemHeight / 2)
+
+      const cos = Math.cos(buildingRotationY)
+      const sin = Math.sin(buildingRotationY)
+      const worldX = buildingPosition[0] + planPoint[0] * cos + planPoint[1] * sin
+      const worldZ = buildingPosition[2] - planPoint[0] * sin + planPoint[1] * cos
+
+      return {
+        node: wall,
+        position: [worldX, floorplanGridWorldY, worldZ] as [number, number, number],
+        localPosition: [along, localY, 0] as [number, number, number],
+        normal: closest.normal,
+        stopPropagation: () => {},
+        nativeEvent: nativeEvent?.nativeEvent,
+      }
+    },
+    [buildingPosition, buildingRotationY, floorplanGridWorldY, selectedItem],
+  )
+
+  // Route a 2D plan point through wall enter/move/leave events while a wall-
+  // attached item is being placed. Returns true when the panel should stop
+  // further pointer-move processing (we emitted a wall event or are between
+  // walls).
+  const handleWallItemPlacementMove = useCallback(
+    (planPoint: WallPlanPoint, nativeEvent: ReactPointerEvent<SVGSVGElement>): boolean => {
+      if (!isWallItemBuildActive) return false
+      const closest = findClosestWallPoint(planPoint, walls, {
+        canUseWall: (wall) => !isCurvedWall(wall),
+      })
+      if (!closest) {
+        if (wallItemEnteredWallIdRef.current) {
+          emitFloorplanWallLeave(wallItemEnteredWallIdRef.current)
+          wallItemEnteredWallIdRef.current = null
+        }
+        return true
+      }
+
+      const payload = buildFloorplanWallItemEventPayload(closest, planPoint, nativeEvent)
+      if (!payload) return true
+
+      if (wallItemEnteredWallIdRef.current !== closest.wall.id) {
+        if (wallItemEnteredWallIdRef.current) {
+          emitFloorplanWallLeave(wallItemEnteredWallIdRef.current)
+        }
+        wallItemEnteredWallIdRef.current = closest.wall.id
+        emitter.emit('wall:enter', payload as any)
+      } else {
+        emitter.emit('wall:move', payload as any)
+      }
+      return true
+    },
+    [buildFloorplanWallItemEventPayload, emitFloorplanWallLeave, isWallItemBuildActive, walls],
+  )
+
+  // Click counterpart — used by the background placement click handler.
+  const handleWallItemPlacementClick = useCallback(
+    (planPoint: WallPlanPoint, nativeEvent: ReactMouseEvent<SVGSVGElement>): boolean => {
+      if (!isWallItemBuildActive) return false
+      const snappedPoint = getSnappedFloorplanPoint(planPoint)
+      const closest = findClosestWallPoint(snappedPoint, walls, {
+        canUseWall: (wall) => !isCurvedWall(wall),
+      })
+      if (!closest) return true
+
+      // Ensure the coordinator has entered the wall surface; the user can
+      // click without a prior move (fresh placement after selecting the
+      // asset from the catalog).
+      if (wallItemEnteredWallIdRef.current !== closest.wall.id) {
+        const enterPayload = buildFloorplanWallItemEventPayload(closest, snappedPoint, nativeEvent)
+        if (!enterPayload) return true
+        if (wallItemEnteredWallIdRef.current) {
+          emitFloorplanWallLeave(wallItemEnteredWallIdRef.current)
+        }
+        wallItemEnteredWallIdRef.current = closest.wall.id
+        emitter.emit('wall:enter', enterPayload as any)
+      }
+
+      const clickPayload = buildFloorplanWallItemEventPayload(closest, snappedPoint, nativeEvent)
+      if (!clickPayload) return true
+      emitter.emit('wall:click', clickPayload as any)
+      return true
+    },
+    [buildFloorplanWallItemEventPayload, emitFloorplanWallLeave, isWallItemBuildActive, walls],
+  )
+
   const handlePointerMove = useCallback(
     (event: ReactPointerEvent<SVGSVGElement>) => {
       const rotationState = floorplanRotationStateRef.current
@@ -8565,6 +8701,20 @@ export function FloorplanPanel() {
         return
       }
 
+      // Wall-attached item placement (artwork, TVs, sconces). Same shape as
+      // the opening branch above: synthesise `wall:enter / move / leave` for
+      // the placement coordinator instead of routing through `grid:move`,
+      // which would otherwise be processed by the floor strategy and drop
+      // the item to floor height.
+      if (isWallItemBuildActive) {
+        const snappedPoint = getSnappedFloorplanPoint(planPoint)
+        setCursorPoint((previousPoint) =>
+          previousPoint && pointsEqual(previousPoint, snappedPoint) ? previousPoint : snappedPoint,
+        )
+        handleWallItemPlacementMove(snappedPoint, event)
+        return
+      }
+
       // Ceiling-attached item placement. Same shape as the opening branch
       // above: synthesise the surface events the placement coordinator
       // already listens for (ceiling:enter / move / leave) instead of
@@ -8667,8 +8817,10 @@ export function FloorplanPanel() {
       getPlanPointFromClientPoint,
       activePolygonDraftPoints,
       handleCeilingItemPlacementMove,
+      handleWallItemPlacementMove,
       isCeilingBuildActive,
       isCeilingItemPlacementActive,
+      isWallItemBuildActive,
       isFenceBuildActive,
       isFloorplanGridInteractionActive,
       isMarqueeSelectionToolActive,
@@ -8924,6 +9076,7 @@ export function FloorplanPanel() {
     handleCeilingPlacementPoint,
     handleSlabPlacementPoint,
     handleWallPlacementPoint,
+    handleWallItemPlacementClick,
     handleZonePlacementPoint,
     isCeilingBuildActive,
     isCeilingItemPlacementActive,
@@ -8933,6 +9086,7 @@ export function FloorplanPanel() {
     isPolygonBuildActive,
     isRoofBuildActive,
     isWallBuildActive,
+    isWallItemPlacementActive: isWallItemBuildActive,
     isZoneBuildActive,
     roofDraftStart,
     setCursorPoint,
@@ -9681,6 +9835,10 @@ export function FloorplanPanel() {
     if (hoveredWallIdRef.current) {
       emitFloorplanWallLeave(hoveredWallIdRef.current)
       hoveredWallIdRef.current = null
+    }
+    if (wallItemEnteredWallIdRef.current) {
+      emitFloorplanWallLeave(wallItemEnteredWallIdRef.current)
+      wallItemEnteredWallIdRef.current = null
     }
   }, [emitFloorplanWallLeave, siteVertexDragState])
 

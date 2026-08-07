@@ -59,7 +59,9 @@ const getMaterialForOriginal = (
 const BrokenItemFallback = ({ node }: { node: ItemNode }) => {
   const handlers = useNodeEvents(node, 'item')
   const shading = useViewer((s) => s.shading)
-  const [w, h, d] = node.asset.dimensions
+  // Учитываем node.scale — resize handle пишет туда, а mesh должен
+  // растягиваться визуально сразу же (live-overrides merge выше по стеку).
+  const [w, h, d] = getScaledDimensions(node)
   const material = useMemo(() => {
     const next = createDefaultMaterial('#ef4444', 1, shading) as MutableMaterial
     next.opacity = 0.6
@@ -99,7 +101,9 @@ function parsePrimitive(src: string | undefined): PrimitiveAsset | null {
 
 const PrimitiveBoxItem = ({ node, color }: { node: ItemNode; color: string }) => {
   const shading = useViewer((s) => s.shading)
-  const [w, h, d] = node.asset.dimensions
+  // Учитываем node.scale — resize handle пишет туда, а mesh должен
+  // растягиваться визуально сразу же (live-overrides merge выше по стеку).
+  const [w, h, d] = getScaledDimensions(node)
   const handlers = useNodeEvents(node, 'item')
   const material = useMemo(
     () => createDefaultMaterial(color, 1, shading),
@@ -114,7 +118,9 @@ const PrimitiveBoxItem = ({ node, color }: { node: ItemNode; color: string }) =>
 }
 
 const PrimitiveTexturedItem = ({ node, url }: { node: ItemNode; url: string }) => {
-  const [w, h, d] = node.asset.dimensions
+  // Учитываем node.scale — resize handle пишет туда, а mesh должен
+  // растягиваться визуально сразу же (live-overrides merge выше по стеку).
+  const [w, h, d] = getScaledDimensions(node)
   const handlers = useNodeEvents(node, 'item')
   const material = useMemo(() => {
     const tex = new TextureLoader().load(url)

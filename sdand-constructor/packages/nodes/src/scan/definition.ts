@@ -1,6 +1,31 @@
-import { type NodeDefinition, ScanNode as ScanNodeSchema } from '@pascal-app/core'
+import {
+  type FloorplanGeometry,
+  type NodeDefinition,
+  ScanNode as ScanNodeSchema,
+} from '@pascal-app/core'
 import { scanParametrics } from './parametrics'
 import { ScanNode } from './schema'
+
+// Sdand: 2D-контур площадки. Метадата ноды содержит { x, z, width, depth }
+// в мировых координатах модели (mesh bbox без применения position). Ноды
+// без footprint возвращают null и в 2D просто не рисуются.
+function buildScanFloorplan(node: ScanNode): FloorplanGeometry | null {
+  const fp = (node.metadata as { footprint?: { x: number; z: number; width: number; depth: number } } | undefined)?.footprint
+  if (!fp) return null
+  const s = node.scale ?? 1
+  return {
+    kind: 'rect',
+    x: node.position[0] + fp.x * s,
+    y: node.position[2] + fp.z * s,
+    width: fp.width * s,
+    height: fp.depth * s,
+    fill: '#f3f4f6',
+    stroke: '#9ca3af',
+    strokeWidth: 1.2,
+    vectorEffect: 'non-scaling-stroke',
+    pointerEvents: 'none',
+  }
+}
 
 /**
  * Scan — Stage A. Mesh imported from the capture pipeline (LiDAR /
@@ -38,6 +63,8 @@ export const scanDefinition: NodeDefinition<typeof ScanNode> = {
     module: () => import('./system'),
     priority: 1,
   },
+
+  floorplan: buildScanFloorplan,
 
   presentation: {
     label: 'Scan',

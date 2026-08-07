@@ -94,6 +94,18 @@ export function DefaultVenueSeeder() {
       } as never)
     }
 
+    // 1c) Миграция footprint. Старые persisted-scan-ноды создавались без
+    //     metadata.footprint — 2D-контур не рисуется. Дописываем на месте.
+    const VENUE_FOOTPRINT = { x: -97.7, z: -50.3, width: 201, depth: 91 }
+    for (const [id, n] of Object.entries(nodesRecord)) {
+      if (n.type !== 'scan') continue
+      const meta = (n.metadata as { tag?: string; footprint?: unknown } | undefined) ?? {}
+      if (meta.tag !== VENUE_TAG || meta.footprint) continue
+      state.updateNode(id as never, {
+        metadata: { ...meta, footprint: VENUE_FOOTPRINT },
+      } as never)
+    }
+
     // 2) Seed default venue: если её ещё нет или она старого формата — создаём Scan-ноду под Level.
     const defaultVenueScans = Object.entries(nodesRecord).filter(
       ([, n]) => n.type === 'scan' && (n.metadata as { tag?: string } | undefined)?.tag === VENUE_TAG,
@@ -128,7 +140,15 @@ export function DefaultVenueSeeder() {
         url: VENUE_URL,
         opacity: 100,
         scale: 1,
-        metadata: { tag: VENUE_TAG, isDefaultVenue: true },
+        metadata: {
+          tag: VENUE_TAG,
+          isDefaultVenue: true,
+          // Bbox из scratchpad/measure-glb.mjs (SM_GOSTINKA.glb):
+          //   X: -97.7 … 103.7  ->  width 201, offsetX +3.0
+          //   Z: -50.3 … 40.9   ->  depth 91,  offsetZ -4.7
+          // Используется scanDefinition.floorplan для 2D-контура площадки.
+          footprint: { x: -97.7, z: -50.3, width: 201, depth: 91 },
+        },
       })
       state.createNode(stub as never, levelId as never)
       console.log('[sdand] default venue seeded under level', levelId)

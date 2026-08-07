@@ -59,6 +59,36 @@ function itemRotateHandle(): HandleDescriptor<ItemNodeType> {
   }
 }
 
+// Sdand: линейные resize-стрелки на +X / +Y / +Z гранях. Пишут scale
+// покомпонентно (не dimensions — asset общий для всех инстансов).
+// anchor = 'min' держит противоположную грань зафиксированной, чтобы
+// подиум растягивался наружу, а не рос симметрично.
+function itemScaleHandle(axis: 'x' | 'y' | 'z'): HandleDescriptor<ItemNodeType> {
+  const idx = axis === 'x' ? 0 : axis === 'y' ? 1 : 2
+  return {
+    kind: 'linear-resize',
+    axis,
+    anchor: axis === 'y' ? 'min' : 'center',
+    min: 0.05,
+    currentValue: (n) => (n.scale?.[idx] ?? 1) as number,
+    apply: (n, newValue) => {
+      const s = [...(n.scale ?? [1, 1, 1])] as [number, number, number]
+      s[idx] = newValue
+      return { scale: s }
+    },
+    placement: {
+      // На +axis грани bbox, ближе к mid-плоскости, чтобы стрелки не
+      // перекрывали друг друга.
+      position: (n) => {
+        const [w, h, d] = getScaledDimensions(n)
+        if (axis === 'x') return [w / 2 + 0.15, h / 2, 0]
+        if (axis === 'y') return [0, h + 0.15, 0]
+        return [0, h / 2, d / 2 + 0.15]
+      },
+    },
+  }
+}
+
 // The 4-way move cross, just past the item's left edge. Press-drag hands the
 // item to its placement coordinator (showing the bounding box, dimension labels
 // and grid-snap ticker) and commits on release — press-drag-release motion with
@@ -270,7 +300,13 @@ export const itemDefinition: NodeDefinition<typeof ItemNode> = {
       return [itemWallRotateHandle(), itemWallMoveHandle()]
     }
     if (attachTo) return []
-    return [itemRotateHandle(), itemMoveHandle()]
+    return [
+      itemRotateHandle(),
+      itemMoveHandle(),
+      itemScaleHandle('x'),
+      itemScaleHandle('y'),
+      itemScaleHandle('z'),
+    ]
   },
 
   renderer: {

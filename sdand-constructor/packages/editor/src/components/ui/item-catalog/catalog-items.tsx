@@ -21,25 +21,28 @@ type StandSpec = {
   color: string
 }
 
+// Подиумы: тонкие плиты 10 см высотой, разной площади. Пользователь
+// потом может отмасштабировать в scene через resize handle / inspector.
+const PODIUM_H = 0.1
 const STANDS: StandSpec[] = [
-  { id: 'stand-1x1x1', name: 'Стенд 1×1×1', size: [1, 1, 1], color: 'ef4444' },
-  { id: 'stand-2x2x2', name: 'Стенд 2×2×2', size: [2, 2, 2], color: 'f97316' },
-  { id: 'stand-3x2x2', name: 'Стенд 3×2×2', size: [3, 2, 2], color: 'eab308' },
-  { id: 'stand-2x3x2', name: 'Стенд 2×3×2 (высокий)', size: [2, 3, 2], color: '22c55e' },
-  { id: 'stand-4x2x3', name: 'Стенд 4×2×3', size: [4, 2, 3], color: '14b8a6' },
-  { id: 'stand-3x3x3', name: 'Стенд 3×3×3', size: [3, 3, 3], color: '06b6d4' },
-  { id: 'stand-5x2x3', name: 'Стенд 5×2×3', size: [5, 2, 3], color: '3b82f6' },
-  { id: 'stand-4x4x4', name: 'Стенд 4×4×4', size: [4, 4, 4], color: '8b5cf6' },
-  { id: 'stand-6x3x4', name: 'Стенд 6×3×4', size: [6, 3, 4], color: 'd946ef' },
-  { id: 'stand-8x3x5', name: 'Стенд 8×3×5 (большой)', size: [8, 3, 5], color: 'ec4899' },
+  { id: 'stand-1x1', name: 'Подиум 1×1', size: [1, PODIUM_H, 1], color: 'ef4444' },
+  { id: 'stand-2x2', name: 'Подиум 2×2', size: [2, PODIUM_H, 2], color: 'f97316' },
+  { id: 'stand-3x2', name: 'Подиум 3×2', size: [3, PODIUM_H, 2], color: 'eab308' },
+  { id: 'stand-2x3', name: 'Подиум 2×3', size: [2, PODIUM_H, 3], color: '22c55e' },
+  { id: 'stand-4x2', name: 'Подиум 4×2', size: [4, PODIUM_H, 2], color: '14b8a6' },
+  { id: 'stand-3x3', name: 'Подиум 3×3', size: [3, PODIUM_H, 3], color: '06b6d4' },
+  { id: 'stand-5x3', name: 'Подиум 5×3', size: [5, PODIUM_H, 3], color: '3b82f6' },
+  { id: 'stand-4x4', name: 'Подиум 4×4', size: [4, PODIUM_H, 4], color: '8b5cf6' },
+  { id: 'stand-6x4', name: 'Подиум 6×4', size: [6, PODIUM_H, 4], color: 'd946ef' },
+  { id: 'stand-8x5', name: 'Подиум 8×5', size: [8, PODIUM_H, 5], color: 'ec4899' },
 ]
 
 function thumbFor(color: string, size: [number, number, number]): string {
-  const [w, h, d] = size
+  const [w, , d] = size
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90'>
     <rect x='0' y='0' width='90' height='90' fill='#1f2937'/>
     <rect x='15' y='15' width='60' height='60' rx='8' fill='#${color}'/>
-    <text x='45' y='52' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='700' fill='white'>${w}×${h}×${d}</text>
+    <text x='45' y='52' text-anchor='middle' font-family='sans-serif' font-size='18' font-weight='700' fill='white'>${w}×${d}</text>
   </svg>`
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }

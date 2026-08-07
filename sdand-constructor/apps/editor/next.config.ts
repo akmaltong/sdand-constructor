@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // Sdand: скрываем "N" dev-indicator внизу-слева — на демо заказчику
+  // это выглядит неаккуратно.
+  devIndicators: false,
   logging: {
     browserToTerminal: true,
   },

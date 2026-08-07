@@ -811,8 +811,10 @@ const ViewerCanvas = memo(function ViewerCanvas({
   const setFloorplanPaneRatio = useEditor((s) => s.setFloorplanPaneRatio)
   const isPreviewMode = useEditor((s) => s.isPreviewMode)
 
+  // Sdand: подсказку Pan / Rotate / Zoom не показываем — интерфейс должен
+  // выглядеть как продукт, а не как обучающий overlay.
   const [isCameraControlsHintVisible, setIsCameraControlsHintVisible] = useState<boolean | null>(
-    null,
+    false,
   )
 
   const viewerAreaRef = useRef<HTMLDivElement>(null)

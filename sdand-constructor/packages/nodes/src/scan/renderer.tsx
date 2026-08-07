@@ -3,7 +3,7 @@
 import { type ScanNode, useRegistry } from '@pascal-app/core'
 import { useAssetUrl, useGLTFKTX2, useViewer } from '@pascal-app/viewer'
 import { Suspense, useMemo, useRef } from 'react'
-import { Color, type Group, type Material, type Mesh, type Object3D, type Texture } from 'three'
+import { Box3, Color, type Group, type Material, type Mesh, type Object3D, type Texture } from 'three'
 
 // Sdand: имена узлов gltf, которые надо скрыть в скан-модели.
 // В SM_GOSTINKA `Potolok001` — контейнер с балками крыши и потолочной
@@ -77,9 +77,41 @@ const ScanModel = ({ url, opacity }: { url: string; opacity: number }) => {
       if (HIDDEN_NODE_NAMES.has(child.name)) child.visible = false
     })
 
+    // Sdand: пол выставочного зала подкрашиваем в чистый белый. Детект:
+    // большой, тонкий mesh у самого низа модели. Убираем map, чтобы фон
+    // текстуры плитки не проступал.
+    scene.updateMatrixWorld(true)
+    const modelBb = new Box3().setFromObject(scene)
+    const floorY = Number.isFinite(modelBb.min.y) ? modelBb.min.y : 0
+    const FLOOR_MAX_THICKNESS = 0.6 // м
+    const FLOOR_MIN_AREA = 40 // м² (10×4 и больше)
+    const WHITE = new Color('#ffffff')
+    const whitenFloor = (material: Material) => {
+      const m = material as Material & { color?: Color; map?: Texture | null }
+      if (m.color) m.color.copy(WHITE)
+      if (m.map) m.map = null
+      material.needsUpdate = true
+    }
+
     scene.traverse((child: any) => {
       if ((child as Mesh).isMesh) {
         const mesh = child as Mesh
+        if (!mesh.visible) return
+
+        // Определяем пол по world-bbox: у пола min.y близка к floorY,
+        // толщина мала, площадь горизонтальной проекции велика.
+        const bb = new Box3().setFromObject(mesh)
+        const thickness = bb.max.y - bb.min.y
+        const area = (bb.max.x - bb.min.x) * (bb.max.z - bb.min.z)
+        const isFloor =
+          Number.isFinite(bb.min.y) &&
+          bb.min.y - floorY < 0.3 &&
+          thickness < FLOOR_MAX_THICKNESS &&
+          area > FLOOR_MIN_AREA
+        if (isFloor) {
+          if (Array.isArray(mesh.material)) mesh.material.forEach(whitenFloor)
+          else if (mesh.material) whitenFloor(mesh.material)
+        }
 
         // Disable raycasting
         mesh.raycast = () => {}

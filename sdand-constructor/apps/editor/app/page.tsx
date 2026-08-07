@@ -4,7 +4,6 @@ import type { AssetInput } from '@pascal-app/core'
 import { CATALOG_ITEMS, Editor, ItemsPanel } from '@pascal-app/editor'
 import { Hammer, Layers, Package, Settings, Upload } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useCallback, useRef, useState } from 'react'
 import { BuildTab } from '@/components/build-tab'
 import { DefaultVenueSeeder } from '@/components/default-venue-seeder'
@@ -13,10 +12,9 @@ import {
   CommunityViewerToolbarRight,
 } from '@/components/viewer-toolbar'
 
-// Импорт пользовательской модели или текстуры:
-//   .glb/.gltf → обычный item с src=objectURL, useGLTF грузит напрямую
-//   .png/.jpg/.jpeg/.webp → баннер (тонкий куб 2×2×0.05) с натянутой текстурой,
-//     src="primitive:tex:<url>" — обрабатывается в packages/nodes/item/renderer
+// Импорт пользовательской модели/текстуры:
+//   .glb/.gltf → обычный item (useGLTF грузит по object-URL)
+//   .png/.jpg/.jpeg/.webp → баннер-плейн с текстурой (primitive:tex:<url>)
 const MODEL_EXT = /\.(glb|gltf)$/i
 const TEX_EXT = /\.(png|jpe?g|webp)$/i
 
@@ -204,22 +202,6 @@ const PROJECT_ID = 'local-editor'
 export default function Home() {
   return (
     <div className="relative h-screen w-screen">
-      {PROJECT_ID === 'local-editor' && (
-        <div className="pointer-events-none absolute top-3 left-1/2 z-40 -translate-x-1/2">
-          <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-border/60 bg-background/90 px-4 py-1.5 text-xs shadow-sm backdrop-blur">
-            <span className="text-muted-foreground">Локальный редактор — сцена в браузере.</span>
-            <Link className="font-medium text-foreground hover:underline" href="/scenes">
-              Открыть сохранённое
-            </Link>
-            <span aria-hidden className="text-muted-foreground">
-              ·
-            </span>
-            <Link className="font-medium text-foreground hover:underline" href="/scenes">
-              Новая сцена
-            </Link>
-          </div>
-        </div>
-      )}
       <DefaultVenueSeeder />
       <Editor
         layoutVersion="v2"

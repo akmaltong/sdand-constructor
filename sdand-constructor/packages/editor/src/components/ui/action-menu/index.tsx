@@ -16,7 +16,15 @@ import { GridSnapControl, SecondaryToggles } from './view-toggles'
 // just above that strip instead of inside it.
 const MOBILE_BOTTOM_OFFSET = 24
 
-export function ActionMenu({ className }: { className?: string }) {
+export function ActionMenu({ className: _className }: { className?: string }) {
+  // Sdand: нижний action-menu (cursor / studio / zone / delete / grid /
+  // rotate / top-view) временно скрыт целиком, чтобы не показывать
+  // заказчику UI унаследованный от Pascal. Позже добавим свой упрощённый.
+  return null
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _ActionMenuOriginal({ className }: { className?: string }) {
   const isMobile = useIsMobile()
   const hasSelectionOnMobile = useViewer((s) => isMobile && s.selection.selectedIds.length > 0)
   const hasReferenceOnMobile = useEditor((s) => isMobile && Boolean(s.selectedReferenceId))

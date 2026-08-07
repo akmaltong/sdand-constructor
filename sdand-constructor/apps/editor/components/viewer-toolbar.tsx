@@ -478,12 +478,5 @@ export function CommunityViewerToolbarLeft() {
 }
 
 export function CommunityViewerToolbarRight() {
-  return (
-    <div className={TOOLBAR_CONTAINER}>
-      <DisplayMenu />
-      <div className="my-1.5 w-px bg-border/50" />
-      <WalkthroughButton />
-      <PreviewButton />
-    </div>
-  )
+  return null
 }

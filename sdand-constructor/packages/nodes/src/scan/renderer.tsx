@@ -45,8 +45,9 @@ const ScanModel = ({ url, opacity }: { url: string; opacity: number }) => {
 
     // Sdand: скан-модели, экспортированные из Unreal, часто имеют baseColor≈0
     // в расчёте на PBR-текстуру. Если текстуры отсутствуют (404) или base color
-    // очень тёмный, подменяем на светло-серый — иначе всё здание чёрное.
-    const LIGHT_FALLBACK = new Color('#d1d5db')
+    // очень тёмный, подменяем на тёплый оттенок гипсокартона / кремового мрамора
+    // (Marble Crema Marfil из оригинальных материалов SM_GOSTINKA).
+    const LIGHT_FALLBACK = new Color('#ede4d3')
     const brightenMaterial = (material: Material) => {
       const m = material as Material & { color?: Color; map?: Texture | null }
       if (!m.color) return
@@ -83,8 +84,11 @@ const ScanModel = ({ url, opacity }: { url: string; opacity: number }) => {
     scene.updateMatrixWorld(true)
     const modelBb = new Box3().setFromObject(scene)
     const floorY = Number.isFinite(modelBb.min.y) ? modelBb.min.y : 0
-    const FLOOR_MAX_THICKNESS = 0.6 // м
-    const FLOOR_MIN_AREA = 40 // м² (10×4 и больше)
+    // Порог с запасом на основной пол, но чтобы не задеть панели стен.
+    // Реальный пол зала — тонкий (<0.3 м) и очень большой (>200 м²);
+    // стены-сегменты редко превышают это в горизонтальной проекции.
+    const FLOOR_MAX_THICKNESS = 0.3 // м
+    const FLOOR_MIN_AREA = 200 // м²
     const WHITE = new Color('#ffffff')
     const whitenFloor = (material: Material) => {
       const m = material as Material & { color?: Color; map?: Texture | null }

@@ -44,8 +44,6 @@ type BuildType = {
 const BUILD_TYPES: BuildType[] = [
   { id: 'wall', label: 'Стена', iconSrc: '/icons/wall.png', kind: 'wall' },
   { id: 'slab', label: 'Пол', iconSrc: '/icons/floor.png', kind: 'slab' },
-  { id: 'door', label: 'Дверь', iconSrc: '/icons/door.png', kind: 'door' },
-  { id: 'column', label: 'Столб', iconSrc: '/icons/column.png', kind: 'column' },
   { id: 'painting', label: 'Покраска', iconSrc: '/icons/paint.png', mode: 'material-paint' },
 ]
 

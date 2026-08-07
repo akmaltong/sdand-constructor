@@ -1072,8 +1072,10 @@ function ArcArrow({
           while (delta > Math.PI) delta -= 2 * Math.PI
           while (delta < -Math.PI) delta += 2 * Math.PI
 
-          if (moveEvent.shiftKey && descriptor.shape === 'rotate') {
-            const step = Math.PI / 12
+          // Sdand: по умолчанию snap на 45° (шаг сцены выставочных стендов).
+          // Shift отключает snap для точного угла.
+          if (!moveEvent.shiftKey && descriptor.shape === 'rotate') {
+            const step = Math.PI / 4
             delta = Math.round(delta / step) * step
           }
 

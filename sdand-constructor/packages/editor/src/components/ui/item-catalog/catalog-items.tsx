@@ -58,6 +58,11 @@ const STAND_ITEMS: AssetInput[] = STANDS.map((s) => ({
   offset: [0, 0, 0],
   rotation: [0, 0, 0],
   scale: [1, 1, 1],
+  // Подиум — явная поверхность: на него можно ставить другое оборудование
+  // и подиумы. Без этого itemSurfaceStrategy считает его «ковриком»
+  // (высота 0.1 м попадает под порог LOW_PROFILE_ITEM_SURFACE_MAX_HEIGHT)
+  // и предметы проходят насквозь.
+  surface: { height: PODIUM_H },
   source: 'library',
 }))
 

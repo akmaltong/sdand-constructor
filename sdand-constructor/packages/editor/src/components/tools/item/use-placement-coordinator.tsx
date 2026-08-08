@@ -640,9 +640,18 @@ export function usePlacementCoordinator(config: PlacementCoordinatorConfig): Rea
 
     const onGridMove = (event: GridEvent) => {
       releaseCommit = () => onGridClick(event)
-      // Lazy draft creation: if no draft yet (e.g. level wasn't ready during init), create now
+      // Lazy draft creation: if no draft yet, create at the actual cursor
+      // position so the item appears where the user is pointing — not at
+      // the origin (which is what initDraft would use at mount time).
       if (draftNode.current === null && asset.attachTo === undefined) {
-        configRef.current.initDraft(gridPosition.current)
+        draftNode.create(
+          new Vector3(
+            event.localPosition[0],
+            event.localPosition[1],
+            event.localPosition[2],
+          ),
+          asset,
+        )
       }
 
       has3DPointerDrivenMoveRef.current = true

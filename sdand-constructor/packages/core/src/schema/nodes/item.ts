@@ -161,12 +161,13 @@ export const LOW_PROFILE_ITEM_SURFACE_MAX_HEIGHT = 0.1
 /**
  * Low, floor-resting items like rugs and parking mats can receive items visually,
  * but should not become item parents or block normal floor placement.
+ * An explicit `asset.surface` declaration (e.g. podiums) wins over the height
+ * heuristic — such items are meant to host things on top.
  */
 export function isLowProfileItemSurface(item: ItemNode): boolean {
   if (item.asset.attachTo) return false
-  const surfaceHeight = item.asset.surface
-    ? item.asset.surface.height * item.scale[1]
-    : getScaledDimensions(item)[1]
+  if (item.asset.surface) return false
+  const surfaceHeight = getScaledDimensions(item)[1]
   return surfaceHeight <= LOW_PROFILE_ITEM_SURFACE_MAX_HEIGHT
 }
 

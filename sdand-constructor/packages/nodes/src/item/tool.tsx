@@ -24,21 +24,14 @@ function ItemPlacementContent({ selectedItem }: { selectedItem: AssetInput }) {
   const cursor = usePlacementCoordinator({
     asset: selectedItem,
     draftNode,
-    initDraft: (gridPosition) => {
-      // Only floor items get a draft on mount; wall / ceiling items are
-      // created lazily by the placement coordinator when the cursor
-      // enters a surface (so the draft doesn't appear at world origin
-      // before the first move event).
-      if (selectedItem && !selectedItem.attachTo) {
-        draftNode.create(gridPosition, selectedItem)
-      }
+    initDraft: () => {
+      // Floor items are created lazily by the placement coordinator on the
+      // first pointer move (see onGridMove). Creating at mount would place
+      // the draft at (0,0,0) before the cursor ray has hit the grid.
     },
     onCommitted: () => {
       triggerSFX('sfx:item-place')
-      // Returning `true` tells the coordinator to immediately spawn the
-      // next draft so the user can keep placing copies — matches the
-      // "repeat-on-click" UX of the legacy tool.
-      return true
+      return false
     },
   })
 

@@ -132,7 +132,8 @@ export { SegmentedControl } from './components/ui/controls/segmented-control'
 export { SliderControl } from './components/ui/controls/slider-control'
 export { ToggleControl } from './components/ui/controls/toggle-control'
 export { FloatingLevelSelector } from './components/ui/floating-level-selector'
-export { CATALOG_ITEMS } from './components/ui/item-catalog/catalog-items'
+export { CATALOG_ITEMS, getDefaultCatalogItem } from './components/ui/item-catalog/catalog-items'
+export { ItemCatalog } from './components/ui/item-catalog/item-catalog'
 // Item collections UI — used by the kind-owned ItemPanel in nodes/.
 export { CollectionsPopover } from './components/ui/panels/collections/collections-popover'
 // Phase 5 Stage E — kinds with bespoke editors (slab holes list,
@@ -223,7 +224,7 @@ export {
 } from './lib/planar-cursor-placement'
 export { clearRoofDuplicateMetadata, duplicateRoofSubtree } from './lib/roof-duplication'
 export type { SceneGraph } from './lib/scene'
-export { applySceneGraphToEditor } from './lib/scene'
+export { applySceneGraphToEditor, saveSceneToLocalStorage } from './lib/scene'
 export { triggerSFX } from './lib/sfx-bus'
 export { duplicateStairSubtree } from './lib/stair-duplication'
 export {

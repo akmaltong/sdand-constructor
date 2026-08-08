@@ -156,7 +156,9 @@ export function NodeArrowHandles() {
 
   const def = node ? nodeRegistry.get(node.type) : null
   const descriptors = useMemo(() => {
-    if (!(node && def?.handles)) return null
+    if (!(node && def?.handles)) {
+      return null
+    }
     return typeof def.handles === 'function'
       ? def.handles(node as never)
       : (def.handles as HandleDescriptor[])
@@ -274,8 +276,12 @@ function NodeArrowHandlesForNode({
   // captures (which never have selection) don't need the layer-based
   // exclusion the wall arrow also goes without.
 
+  // In fallback mode we portal into outerRide itself (the node's own Object3D),
+  // so outerRef is already parented to outerRide — no need to mirror its
+  // world position, otherwise handles double-offset.
+  const isFallback = !portalObject && !!outerRide && innerRideId === null
   useFrame(() => {
-    if (outerRef.current && outerRide) {
+    if (outerRef.current && outerRide && !isFallback) {
       outerRef.current.position.copy(outerRide.position)
       outerRef.current.quaternion.copy(outerRide.quaternion)
     }
@@ -313,7 +319,34 @@ function NodeArrowHandlesForNode({
     [],
   )
 
-  if (!portalObject || !outerRide || (innerRideId !== null && !innerRide)) return null
+  // Fallback: if portal target (parent mesh) is unavailable but the node
+   // mesh itself is registered, portal into the node's own Object3D instead.
+   // This handles scan nodes whose parent level mesh hasn't registered yet
+   // or nodes at the scene root with no parent.
+   if (!portalObject && outerRide && innerRideId === null) {
+    const arrows = descriptors.map((descriptor, index) => (
+      <ArrowHandle
+        activeIndex={activeIndex}
+        descriptor={descriptor}
+        dragControls={dragControls}
+        handleIndex={index}
+        key={index}
+        liveNode={node}
+        preDragNode={preDragNode}
+        rideObject={outerRide}
+      />
+    ))
+    return createPortal(
+      <group ref={outerRef}>
+        {arrows}
+      </group>,
+      outerRide,
+    )
+   }
+
+   if (!portalObject || !outerRide || (innerRideId !== null && !innerRide)) {
+    return null
+   }
 
   // `arrowFrame` is the Object3D used as the spatial reference for the
   // per-arrow drag math — its world matrix maps node-local coords to

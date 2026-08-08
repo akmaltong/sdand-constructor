@@ -1,10 +1,45 @@
 import {
   type FloorplanGeometry,
+  type HandleDescriptor,
   type NodeDefinition,
   ScanNode as ScanNodeSchema,
 } from '@pascal-app/core'
+import type { ScanNode as ScanNodeType } from './schema'
 import { scanParametrics } from './parametrics'
 import { ScanNode } from './schema'
+
+const HANDLE_HEIGHT = 0.3
+const HANDLE_OFFSET = 2
+
+function scanMoveHandle(): HandleDescriptor<ScanNodeType> {
+  return {
+    kind: 'translate',
+    placement: {
+      position: () => [0, HANDLE_HEIGHT, HANDLE_OFFSET],
+    },
+    apply: (_n, pos) => ({ position: [pos[0], _n.position[1], pos[2]] }),
+  }
+}
+
+function scanRotateHandle(): HandleDescriptor<ScanNodeType> {
+  return {
+    kind: 'arc-resize',
+    axis: 'angular',
+    shape: 'rotate',
+    apply: (initial, delta) => ({
+      rotation: [0, (initial.rotation?.[1] ?? 0) - delta, 0],
+    }),
+    placement: {
+      position: () => [HANDLE_OFFSET, HANDLE_HEIGHT, HANDLE_OFFSET],
+      rotationY: () => -Math.PI / 4,
+    },
+    decoration: {
+      kind: 'ring',
+      radius: () => HANDLE_OFFSET * 1.2,
+      y: () => HANDLE_HEIGHT,
+    },
+  }
+}
 
 // Sdand: 2D-контур площадки. Метадата ноды содержит { x, z, width, depth }
 // в мировых координатах модели (mesh bbox без применения position). Ноды
@@ -49,10 +84,10 @@ export const scanDefinition: NodeDefinition<typeof ScanNode> = {
     selectable: { hitVolume: 'bbox' },
     duplicable: false,
     deletable: true,
-    // Scans carry user-uploaded imagery — cataloging them as
-    // reusable presets is out of scope.
     presettable: false,
   },
+
+  handles: [scanMoveHandle(), scanRotateHandle()],
 
   parametrics: scanParametrics,
 

@@ -3,7 +3,15 @@
 import { type ScanNode, useRegistry } from '@pascal-app/core'
 import { useAssetUrl, useGLTFKTX2, useViewer } from '@pascal-app/viewer'
 import { Suspense, useMemo, useRef } from 'react'
-import { Box3, Color, type Group, type Material, type Mesh, type Object3D, type Texture } from 'three'
+import {
+  Box3,
+  Color,
+  type Group,
+  type Material,
+  type Mesh,
+  type Object3D,
+  type Texture,
+} from 'three'
 
 // Sdand: имена узлов gltf, которые надо скрыть в скан-модели.
 // В SM_GOSTINKA `Potolok001` — контейнер с балками крыши и потолочной
@@ -42,6 +50,15 @@ const ScanModel = ({ url, opacity }: { url: string; opacity: number }) => {
   useMemo(() => {
     const normalizedOpacity = opacity / 100
     const isTransparent = normalizedOpacity < 1
+    // Sdand: у SM_Manezh весь зал — один mesh со светло-серым материалом.
+    // Перекрашиваем его в цвет пола/стен Гостинки (#c9c9c9), чтобы
+    // площадки выглядели одинаково светлыми.
+    const isManezh = /manezh/i.test(url)
+    const MANEZH_GOSTINKA_GRAY = new Color('#c9c9c9')
+    const recolorManezh = (material: Material) => {
+      const m = material as Material & { color?: Color }
+      if (m.color && m.color.getHex() === 0xb8b8b8) m.color.copy(MANEZH_GOSTINKA_GRAY)
+    }
 
     // Sdand: скан-модели, экспортированные из Unreal, часто имеют baseColor≈0
     // в расчёте на PBR-текстуру. Если текстуры отсутствуют (404) или base color
@@ -116,6 +133,10 @@ const ScanModel = ({ url, opacity }: { url: string; opacity: number }) => {
           if (Array.isArray(mesh.material)) mesh.material.forEach(whitenFloor)
           else if (mesh.material) whitenFloor(mesh.material)
         }
+        if (isManezh) {
+          if (Array.isArray(mesh.material)) mesh.material.forEach(recolorManezh)
+          else if (mesh.material) recolorManezh(mesh.material)
+        }
 
         // Disable raycasting
         mesh.raycast = () => {}
@@ -134,7 +155,7 @@ const ScanModel = ({ url, opacity }: { url: string; opacity: number }) => {
         }
       }
     })
-  }, [scene, opacity])
+  }, [scene, opacity, url])
 
   return <primitive object={scene} />
 }

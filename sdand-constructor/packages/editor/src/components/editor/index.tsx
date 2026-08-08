@@ -157,6 +157,9 @@ export interface EditorProps {
 
   // Command palette fallback when no commands match
   commandPaletteEmptyAction?: CommandPaletteEmptyAction
+
+  // Hide the floating level selector
+  hideLevelSelector?: boolean
 }
 
 function EditorSceneCrashFallback() {
@@ -943,6 +946,7 @@ export default function Editor({
   sitePanelProps,
   extraSidebarPanels,
   commandPaletteEmptyAction,
+  hideLevelSelector = false,
 }: EditorProps) {
   const isFirstPersonMode = useEditor((s) => s.isFirstPersonMode)
   const isStudioMode = useEditor((s) => s.workspaceMode === 'studio')
@@ -1234,7 +1238,7 @@ export default function Editor({
               navbarSlot={navbarSlot}
               overlays={
                 <>
-                  {!isCaptureMode && <FloatingLevelSelector />}
+                  {!isCaptureMode && !hideLevelSelector && <FloatingLevelSelector />}
                   {!(isVersionPreviewMode || isCaptureMode || isStudioMode) && (
                     <div className="pointer-events-auto">
                       <ActionMenu />

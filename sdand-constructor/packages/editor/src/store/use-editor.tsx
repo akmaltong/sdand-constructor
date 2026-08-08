@@ -1014,6 +1014,16 @@ const useEditor = create<EditorState>()(
     }),
     {
       name: 'pascal-editor-ui-preferences',
+      version: 2,
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as Record<string, unknown>
+        // On upgrade from v1 or fresh start, always clear tool to prevent
+        // stale drawing tools from persisting across sessions
+        if (version < 2) {
+          return { ...state, tool: null, mode: 'select', phase: 'site' }
+        }
+        return state
+      },
       merge: (persistedState, currentState) => ({
         ...currentState,
         ...normalizePersistedEditorUiState(persistedState as Partial<PersistedEditorState>),

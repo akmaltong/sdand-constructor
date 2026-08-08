@@ -8,8 +8,11 @@ import {
   Editor,
   type SceneGraph,
   type SidebarTab,
+  saveSceneToLocalStorage,
+  useEditor,
+  useScene,
 } from '@pascal-app/editor'
-import { Hammer, Layers } from 'lucide-react'
+import { Hammer, Layers, RotateCcw, Save, SquareKanban } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -98,10 +101,11 @@ export function SceneLoader({ initialScene, meta }: SceneLoaderProps) {
   const suppressRemoteSaveUntilRef = useRef(0)
   const [conflict, setConflict] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [showVenuePicker, setShowVenuePicker] = useState(true)
 
   const handleLoad = useCallback(async () => initialScene, [initialScene])
 
-  const handleSave = useCallback(
+  const handleSceneSave = useCallback(
     async (graph: SceneGraph, options?: { keepalive?: boolean }) => {
       const graphJson = sceneGraphSignature(graph)
       const isRecentRemoteApply = Date.now() < suppressRemoteSaveUntilRef.current
@@ -191,6 +195,24 @@ export function SceneLoader({ initialScene, meta }: SceneLoaderProps) {
     [meta.id],
   )
 
+  const handleReset = useCallback(() => {
+    const ed = useEditor.getState()
+    ed.setPhase('site')
+    ed.setMode('select')
+    ed.setTool(null)
+    ed.setCatalogCategory(null)
+    ed.setSelectedItem(null as never)
+    applySceneGraphToEditor(null)
+  }, [])
+
+  const handleQuickSave = useCallback(() => {
+    const sceneState = useScene.getState()
+    saveSceneToLocalStorage({
+      nodes: sceneState.nodes as Record<string, unknown>,
+      rootNodeIds: sceneState.rootNodeIds,
+    })
+  }, [])
+
   return (
     <div className="relative h-screen w-screen">
       {conflict && (
@@ -223,6 +245,30 @@ export function SceneLoader({ initialScene, meta }: SceneLoaderProps) {
         </div>
       )}
       <div className="pointer-events-none absolute top-4 right-4 z-40 flex items-center gap-2">
+        <button
+          className="pointer-events-auto inline-flex items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40"
+          onClick={handleQuickSave}
+          type="button"
+        >
+          <Save className="h-3.5 w-3.5" />
+          Save
+        </button>
+        <button
+          className="pointer-events-auto inline-flex items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40"
+          onClick={handleReset}
+          type="button"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset
+        </button>
+        <button
+          className="pointer-events-auto inline-flex items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40"
+          onClick={() => setShowVenuePicker(true)}
+          type="button"
+        >
+          <SquareKanban className="h-3.5 w-3.5" />
+          Venue
+        </button>
         <Link
           className="pointer-events-auto rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40"
           href="/scenes"
@@ -230,10 +276,33 @@ export function SceneLoader({ initialScene, meta }: SceneLoaderProps) {
           All scenes
         </Link>
       </div>
+      {showVenuePicker ? (
+        <div className="pointer-events-auto absolute inset-x-0 top-16 z-50 mx-auto flex w-[min(480px,calc(100%-2rem))] flex-col gap-3 rounded-2xl border border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-sm">Выберите площадку</p>
+              <p className="mt-1 text-muted-foreground text-xs">Начните с готовой площадки или перейдите к созданию стенда с нуля.</p>
+            </div>
+            <button className="text-muted-foreground text-xs" onClick={() => setShowVenuePicker(false)} type="button">
+              Закрыть
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button className="rounded-xl border border-border bg-muted/30 p-3 text-left transition hover:bg-muted/60" onClick={() => setShowVenuePicker(false)} type="button">
+              <p className="font-medium text-sm">Гостинка</p>
+              <p className="mt-1 text-muted-foreground text-xs">Базовая выставочная площадка</p>
+            </button>
+            <button className="rounded-xl border border-border bg-muted/30 p-3 text-left transition hover:bg-muted/60" onClick={() => setShowVenuePicker(false)} type="button">
+              <p className="font-medium text-sm">Пустая сцена</p>
+              <p className="mt-1 text-muted-foreground text-xs">Новый проект без привязки</p>
+            </button>
+          </div>
+        </div>
+      ) : null}
       <Editor
         layoutVersion="v2"
         onLoad={handleLoad}
-        onSave={handleSave}
+        onSave={handleSceneSave}
         onThumbnailCapture={handleThumb}
         projectId={meta.projectId ?? 'default'}
         sidebarTabs={SIDEBAR_TABS}

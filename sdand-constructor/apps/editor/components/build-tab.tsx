@@ -1,6 +1,7 @@
 'use client'
 
-import { MaterialPaintPanel, triggerSFX, useEditor } from '@pascal-app/editor'
+import { CATALOG_ITEMS, ItemCatalog, MaterialPaintPanel, getDefaultCatalogItem, triggerSFX, useEditor } from '@pascal-app/editor'
+import { Boxes, Layers, Package, PencilRuler, Square, Wand2 } from 'lucide-react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef } from 'react'
 import {
@@ -17,17 +18,10 @@ import { cn } from '@/lib/utils'
  */
 type BuildToolKind =
   | 'wall'
-  | 'fence'
   | 'slab'
-  | 'ceiling'
-  | 'roof'
-  | 'stair'
-  | 'elevator'
+  | 'item'
   | 'door'
   | 'window'
-  | 'column'
-  | 'shelf'
-  | 'spawn'
 
 type BuildType = {
   /** Selection id — equals `kind` for tool types, `'painting'` for paint mode. */
@@ -40,11 +34,13 @@ type BuildType = {
   mode?: 'material-paint'
 }
 
-// Sdand: only stand-relevant tools — walls, floor, door, column and paint.
 const BUILD_TYPES: BuildType[] = [
-  { id: 'wall', label: 'Стена', iconSrc: '/icons/wall.png', kind: 'wall' },
-  { id: 'slab', label: 'Пол', iconSrc: '/icons/floor.png', kind: 'slab' },
-  { id: 'painting', label: 'Покраска', iconSrc: '/icons/paint.png', mode: 'material-paint' },
+  { id: 'wall', label: 'Нарисовать стены', iconSrc: '/icons/wall.png', kind: 'wall' },
+  { id: 'floor', label: 'Нарисовать подиум', iconSrc: '/icons/floor.png', kind: 'slab' },
+  { id: 'podium', label: 'Подиум', iconSrc: '/icons/floor.png', kind: 'item' },
+  { id: 'equipment', label: 'Оборудование', iconSrc: '/icons/couch.png', kind: 'item' },
+  { id: 'screens', label: 'Экраны', iconSrc: '/icons/bathroom.png', kind: 'item' },
+  { id: 'paint', label: 'Покраска', iconSrc: '/icons/paint.png', mode: 'material-paint' },
 ]
 
 /**
@@ -59,6 +55,17 @@ function activateBuildTool(kind: BuildToolKind): void {
   ed.setToolDefaults(kind, null)
   ed.setMode('build')
   ed.setTool(kind)
+}
+
+function activateQuickPlacement(kind: 'podium' | 'equipment' | 'screens'): void {
+  const ed = useEditor.getState()
+  ed.setPhase('structure')
+  ed.setStructureLayer('elements')
+  ed.setMode('build')
+  ed.setTool('item')
+  ed.setCatalogCategory(kind === 'equipment' ? 'kitchen' : kind === 'screens' ? 'bathroom' : 'furniture')
+  const defaultItem = getDefaultCatalogItem(kind === 'equipment' ? 'kitchen' : kind === 'screens' ? 'bathroom' : 'furniture')
+  if (defaultItem) ed.setSelectedItem(defaultItem)
 }
 
 /** Enter material-paint mode — the Build tab's "Painting" category. */
@@ -87,39 +94,56 @@ export function BuildTab() {
   const handleTypeClick = useCallback((type: BuildType) => {
     if (type.mode === 'material-paint') {
       activatePaintMode()
+    } else if (type.id === 'podium') {
+      activateQuickPlacement('podium')
+    } else if (type.id === 'equipment') {
+      activateQuickPlacement('equipment')
+    } else if (type.id === 'screens') {
+      activateQuickPlacement('screens')
     } else if (type.kind) {
       activateBuildTool(type.kind)
     }
   }, [])
 
-  // On open, land on the first build tool — parity with the community Build
-  // sidebar, so switching to Build immediately arms a usable tool.
-  const didInitRef = useRef(false)
-  useEffect(() => {
-    if (didInitRef.current) return
-    didInitRef.current = true
-    const firstType = BUILD_TYPES.find((t) => t.kind)
-    if (firstType) handleTypeClick(firstType)
-  }, [handleTypeClick])
+  const catalogCategory = useEditor((s) => s.catalogCategory)
+  const editorMode = useEditor((s) => s.mode)
+  const editorTool = useEditor((s) => s.tool)
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
+      <div className="rounded-xl border border-border/60 bg-background/70 p-2">
+        <div className="flex items-center gap-2 text-foreground/80 text-sm">
+          <PencilRuler className="h-4 w-4" />
+          <span>Быстрый сценарий: стены → подиумы → оборудование</span>
+        </div>
+      </div>
+
       <TooltipProvider delayDuration={0} disableHoverableContent>
         <div
           className="grid gap-1.5"
-          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))' }}
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))' }}
         >
           {BUILD_TYPES.map((type) => {
             const active = isTypeActive(type)
+            const Icon =
+              type.id === 'podium'
+                ? Boxes
+                : type.id === 'equipment'
+                  ? Layers
+                  : type.id === 'screens'
+                    ? Package
+                    : type.id === 'floor'
+                      ? Square
+                      : Wand2
             return (
               <Tooltip key={type.id}>
                 <TooltipTrigger asChild>
                   <button
                     className={cn(
-                      'group relative flex aspect-square items-center justify-center rounded-xl p-1 transition-all duration-200',
+                      'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl p-1.5 text-[10px] transition-all duration-200',
                       active
-                        ? 'bg-primary/10 ring-1 ring-primary/50'
-                        : 'bg-muted/40 opacity-70 grayscale hover:bg-muted hover:opacity-100 hover:grayscale-0',
+                        ? 'bg-primary/10 ring-1 ring-primary/50 text-foreground'
+                        : 'bg-muted/40 opacity-80 hover:bg-muted hover:opacity-100',
                     )}
                     onClick={() => {
                       triggerSFX('sfx:menu-click')
@@ -128,13 +152,8 @@ export function BuildTab() {
                     onMouseEnter={() => triggerSFX('sfx:menu-hover')}
                     type="button"
                   >
-                    <Image
-                      alt={type.label}
-                      className="size-full object-contain transition-transform duration-200 group-hover:scale-110"
-                      height={48}
-                      src={type.iconSrc}
-                      width={48}
-                    />
+                    <Icon className="h-5 w-5" />
+                    <span className="leading-none">{type.label}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent className="pointer-events-none" side="top">
@@ -146,9 +165,20 @@ export function BuildTab() {
         </div>
       </TooltipProvider>
 
-      {mode === 'material-paint' ? (
+      {editorMode === 'material-paint' ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <MaterialPaintPanel />
+        </div>
+      ) : editorTool === 'item' && catalogCategory ? (
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border/60 bg-background/80 p-2">
+          <ItemCatalog
+            activePlacementTag={null}
+            activeFunctionalTag={null}
+            category={catalogCategory}
+            items={CATALOG_ITEMS}
+            leadingTile={null}
+            search=""
+          />
         </div>
       ) : null}
     </div>

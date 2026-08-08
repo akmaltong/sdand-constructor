@@ -155,7 +155,8 @@ export const Grid = ({
         targetY = levelMesh.position.y
       }
     }
-    const newY = MathUtils.lerp(gridRef.current.position.y, targetY, 12 * delta)
+    // Nudge grid slightly above floor so scan models don't occlude it
+    const newY = MathUtils.lerp(gridRef.current.position.y, targetY + 0.05, 12 * delta)
     gridRef.current.position.y = newY
     setGridY(newY)
 

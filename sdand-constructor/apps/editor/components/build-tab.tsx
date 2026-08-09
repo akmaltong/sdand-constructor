@@ -228,6 +228,16 @@ export function BuildTab() {
     const file = await pickStandFile()
     if (!file) return
 
+    // Sdand: guard-rail от гигантских моделей — сотни МБ душат main thread
+    // на этапе <Clone> в placement preview и виглядит как «зависло».
+    const MAX_MB = 200
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setStandError(
+        `Файл слишком большой (${Math.round(file.size / 1024 / 1024)} MB). Максимум ${MAX_MB} MB. Сожми через gltfpack -cc.`,
+      )
+      return
+    }
+
     setStandLoading(true)
     setStandError(null)
     try {
@@ -255,14 +265,16 @@ export function BuildTab() {
         source: 'mine',
       }
 
+      // Разносим store-updates по кадрам, чтобы React успел закоммитить
+      // selectedItem до активации placement-tool. Иначе один синхронный
+      // тик держит main thread во время <Clone> большой модели.
       const ed = useEditor.getState()
       ed.setPhase('structure')
       ed.setStructureLayer('elements')
       ed.setMode('build')
       ed.setSelectedItem(asset as never)
-      // catalogCategory намеренно НЕ ставим — ItemCatalog перезапишет selectedItem
-      // на первый элемент категории если увидит незнакомый src
       ed.setCatalogCategory(null)
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
       ed.setTool('item')
     } catch (error) {
       console.error('[stand-import]', error)

@@ -29,7 +29,7 @@ const sitePanel: { id: PanelId; iconSrc: string; label: string } = {
 const settingsPanel: { id: PanelId; iconSrc: string; label: string } = {
   id: 'settings',
   iconSrc: '/icons/settings.png',
-  label: 'Settings',
+  label: 'Настройки',
 }
 
 const panels: { id: PanelId; iconSrc: string; label: string }[] = [sitePanel, settingsPanel]

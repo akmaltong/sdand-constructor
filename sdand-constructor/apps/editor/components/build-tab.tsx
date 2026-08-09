@@ -1,9 +1,9 @@
 'use client'
 
+import type { AssetInput } from '@pascal-app/core'
 import { CATALOG_ITEMS, ItemCatalog, MaterialPaintPanel, getDefaultCatalogItem, triggerSFX, useEditor } from '@pascal-app/editor'
-import { Boxes, Layers, Package, PencilRuler, Square, Wand2 } from 'lucide-react'
-import Image from 'next/image'
-import { useCallback, useEffect, useRef } from 'react'
+import { Boxes, Layers, Package, PencilRuler, Square, Upload, Wand2 } from 'lucide-react'
+import { useCallback } from 'react'
 import {
   Tooltip,
   TooltipContent,
@@ -31,7 +31,7 @@ type BuildType = {
   /** Present for structure-tool types (absent for the paint mode). */
   kind?: BuildToolKind
   /** Non-placement special mode. */
-  mode?: 'material-paint'
+  mode?: 'material-paint' | 'load-stand'
 }
 
 const BUILD_TYPES: BuildType[] = [
@@ -41,6 +41,7 @@ const BUILD_TYPES: BuildType[] = [
   { id: 'equipment', label: 'Оборудование', iconSrc: '/icons/couch.png', kind: 'item' },
   { id: 'screens', label: 'Экраны', iconSrc: '/icons/bathroom.png', kind: 'item' },
   { id: 'paint', label: 'Покраска', iconSrc: '/icons/paint.png', mode: 'material-paint' },
+  { id: 'load-stand', label: 'Загрузить стенд', iconSrc: '/icons/paint.png', mode: 'load-stand' },
 ]
 
 /**
@@ -76,6 +77,49 @@ function activatePaintMode(): void {
   ed.setMode('material-paint')
 }
 
+/** Import GLB/GLTF model from user's PC and place it into the scene */
+function loadStandFromFile(): void {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.glb,.gltf'
+  input.onchange = (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+
+    const url = URL.createObjectURL(file)
+    const baseName = file.name.replace(/\.[^.]+$/, '')
+
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90'>
+      <rect width='90' height='90' fill='#1f2937'/>
+      <rect x='15' y='15' width='60' height='60' rx='8' fill='#64748b'/>
+      <text x='45' y='52' text-anchor='middle' font-family='sans-serif' font-size='14' font-weight='700' fill='white'>GLB</text>
+    </svg>`
+    const thumbnail = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+
+    const asset: AssetInput = {
+      id: `import-${Date.now()}-${baseName}`,
+      category: 'furniture',
+      name: baseName,
+      thumbnail,
+      tags: ['import'],
+      src: url,
+      dimensions: [1, 1, 1],
+      offset: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      source: 'mine',
+    }
+
+    const ed = useEditor.getState()
+    ed.setPhase('structure')
+    ed.setStructureLayer('elements')
+    ed.setMode('build')
+    ed.setTool('item')
+    ed.setSelectedItem(asset as never)
+  }
+  input.click()
+}
+
 /**
  * Build tab for the open-source standalone editor — a preset-less replica of
  * the community Build sidebar. Clicking a type activates its raw tool, drawn
@@ -94,6 +138,9 @@ export function BuildTab() {
   const handleTypeClick = useCallback((type: BuildType) => {
     if (type.mode === 'material-paint') {
       activatePaintMode()
+    } else if (type.mode === 'load-stand') {
+      triggerSFX('sfx:menu-click')
+      loadStandFromFile()
     } else if (type.id === 'podium') {
       activateQuickPlacement('podium')
     } else if (type.id === 'equipment') {
@@ -132,9 +179,11 @@ export function BuildTab() {
                   ? Layers
                   : type.id === 'screens'
                     ? Package
-                    : type.id === 'floor'
-                      ? Square
-                      : Wand2
+                    : type.id === 'load-stand'
+                      ? Upload
+                      : type.id === 'floor'
+                        ? Square
+                        : Wand2
             return (
               <Tooltip key={type.id}>
                 <TooltipTrigger asChild>

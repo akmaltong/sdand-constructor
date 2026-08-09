@@ -156,24 +156,9 @@ export const SiteRenderer = ({ node }: { node: SiteNode }) => {
         <NodeRenderer key={childId} nodeId={childId as AnyNodeId} />
       ))}
 
-      {/* Ground fill + boundary line — рисуем только когда своей 3D-площадки
-          в сцене ещё нет. При наличии Scan-ноды они дублируют её пол. */}
-      {!hasScanVenue && groundShape && (
-        <mesh
-          material={groundMaterial}
-          position={[0, -0.05, 0]}
-          receiveShadow
-          rotation={[-Math.PI / 2, 0, 0]}
-        >
-          <shapeGeometry args={[groundShape]} />
-        </mesh>
-      )}
-      {!hasScanVenue && (
-        // @ts-ignore
-        <line frustumCulled={false} geometry={lineGeometry} renderOrder={9}>
-          <lineBasicMaterial color="#f59e0b" linewidth={2} opacity={0.6} transparent />
-        </line>
-      )}
+      {/* Sdand: убрана оранжевая boundary-line и ground-fill site.
+          Для конфигуратора стендов границы участка — контур зала/подложка,
+          а не пользовательский полигон. */}
     </group>
   )
 }

@@ -39,9 +39,7 @@ function getRegistryTool(tool: Tool | null): ComponentType | null {
 // to `def.tool` yet. Wall / fence / slab / ceiling / door / window /
 // item / shelf / spawn now go through the registry path above.
 const tools: Record<Phase, Partial<Record<Tool, React.FC>>> = {
-  site: {
-    'property-line': SiteBoundaryEditor,
-  },
+  site: {},
   structure: {
     roof: RoofTool,
     stair: StairTool,

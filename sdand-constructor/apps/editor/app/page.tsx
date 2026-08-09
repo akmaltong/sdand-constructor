@@ -10,7 +10,7 @@ import {
   useEditor,
   useScene,
 } from '@pascal-app/editor'
-import { Hammer, Layers, RotateCcw, Save, Upload } from 'lucide-react'
+import { Hammer, Layers, RotateCcw, Settings, Upload } from 'lucide-react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BuildTab } from '@/components/build-tab'
@@ -172,6 +172,14 @@ const SIDEBAR_TABS = [
       />
     ),
   },
+  {
+    id: 'settings',
+    label: 'Настройки',
+    component: () => null,
+    mobileDefaultSnap: 0.5,
+    mobileIcon: <Settings className="h-5 w-5" />,
+    icon: <Settings className="h-8 w-8" />,
+  },
 ]
 
 const PROJECT_ID = 'local-editor'
@@ -217,15 +225,11 @@ export default function Home() {
     setShowWelcome(false)
   }, [])
 
-  const handleSave = useCallback(() => {
-    const sceneState = useScene.getState()
-    saveSceneToLocalStorage({
-      nodes: sceneState.nodes as Record<string, unknown>,
-      rootNodeIds: sceneState.rootNodeIds,
-    })
-  }, [])
-
   const handleReset = useCallback(() => {
+    // Clear persisted state FIRST so zustand persist does not restore old tool/mode
+    localStorage.removeItem('pascal-editor-ui-preferences')
+    localStorage.removeItem('pascal-editor-scene')
+    localStorage.removeItem('pascal-editor-selection')
     const ed = useEditor.getState()
     ed.setPhase('site')
     ed.setMode('select')
@@ -233,20 +237,15 @@ export default function Home() {
     ed.setCatalogCategory(null)
     ed.setSelectedItem(null as never)
     applySceneGraphToEditor(null)
+    // Показать меню выбора площадки
+    setSelectedVenue(null)
+    setShowVenuePicker(true)
   }, [])
 
   return (
     <div className="relative h-screen w-screen">
       {selectedVenue && <DefaultVenueSeeder venue={selectedVenue} />}
       <div className="pointer-events-none absolute top-4 right-4 z-40 flex items-center gap-2">
-        <button
-          className="pointer-events-auto inline-flex items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40"
-          onClick={handleSave}
-          type="button"
-        >
-          <Save className="h-3.5 w-3.5" />
-          Save
-        </button>
         <button
           className="pointer-events-auto inline-flex items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40"
           onClick={handleReset}

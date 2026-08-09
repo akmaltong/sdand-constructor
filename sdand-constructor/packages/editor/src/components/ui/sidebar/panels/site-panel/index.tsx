@@ -47,21 +47,6 @@ import { InlineRenameInput } from './inline-rename-input'
 import { focusTreeNode, TreeNode } from './tree-node'
 import { TreeNodeDragProvider } from './tree-node-drag'
 
-// ============================================================================
-// PROPERTY LINE SECTION
-// ============================================================================
-
-function calculatePerimeter(points: Array<[number, number]>): number {
-  if (points.length < 2) return 0
-  let perimeter = 0
-  for (let i = 0; i < points.length; i++) {
-    const [x1, z1] = points[i]!
-    const [x2, z2] = points[(i + 1) % points.length]!
-    perimeter += Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2)
-  }
-  return perimeter
-}
-
 function calculatePolygonArea(polygon: Array<[number, number]>): number {
   if (polygon.length < 3) return 0
   let area = 0
@@ -75,158 +60,6 @@ function calculatePolygonArea(polygon: Array<[number, number]>): number {
   }
   return Math.abs(area) / 2
 }
-
-function useSiteNode(): SiteNode | null {
-  const siteId = useScene((state) => {
-    for (const id of state.rootNodeIds) {
-      if (state.nodes[id]?.type === 'site') return id
-    }
-    return null
-  })
-  return useScene((state) =>
-    siteId ? ((state.nodes[siteId] as SiteNode | undefined) ?? null) : null,
-  )
-}
-
-const PropertyLineSection = memo(function PropertyLineSection() {
-  const siteNode = useSiteNode()
-  const updateNode = useScene((state) => state.updateNode)
-  const mode = useEditor((state) => state.mode)
-  const setMode = useEditor((state) => state.setMode)
-
-  if (!siteNode) return null
-
-  const points = siteNode.polygon?.points ?? []
-  const area = calculatePolygonArea(points)
-  const perimeter = calculatePerimeter(points)
-  const isEditing = mode === 'edit'
-
-  const handleToggleEdit = () => {
-    setMode(isEditing ? 'select' : 'edit')
-  }
-
-  const handlePointChange = (index: number, axis: 0 | 1, value: number) => {
-    const newPoints = [...points.map((p) => [...p] as [number, number])]
-    newPoints[index]![axis] = value
-    updateNode(siteNode.id, {
-      polygon: { type: 'polygon' as const, points: newPoints },
-    })
-  }
-
-  const handleAddPoint = () => {
-    const lastPoint = points[points.length - 1]
-    const firstPoint = points[0]
-    if (!(lastPoint && firstPoint)) return
-
-    const newPoint: [number, number] = [
-      (lastPoint[0] + firstPoint[0]) / 2,
-      (lastPoint[1] + firstPoint[1]) / 2,
-    ]
-    const newPoints = [...points, newPoint]
-    updateNode(siteNode.id, {
-      polygon: { type: 'polygon' as const, points: newPoints },
-    })
-  }
-
-  const handleDeletePoint = (index: number) => {
-    if (points.length <= 3) return
-    const newPoints = points.filter((_, i) => i !== index)
-    updateNode(siteNode.id, {
-      polygon: { type: 'polygon' as const, points: newPoints },
-    })
-  }
-
-  return (
-    <div className="relative border-border/50 border-b">
-      {/* Vertical tree line */}
-      <div className="absolute top-0 bottom-0 left-[21px] w-px bg-border/50" />
-
-      {/* Header */}
-      <div className="relative flex items-center justify-between py-2 pr-3 pl-10">
-        {/* Horizontal branch line */}
-        <div className="absolute top-1/2 left-[21px] h-px w-4 bg-border/50" />
-
-        <div className="flex items-center gap-2">
-          <Pentagon className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium text-sm">Property Line</span>
-        </div>
-        <button
-          className={cn(
-            'flex h-6 w-6 cursor-pointer items-center justify-center rounded transition-colors',
-            isEditing
-              ? 'bg-orange-500/20 text-orange-400'
-              : 'text-muted-foreground hover:bg-accent',
-          )}
-          onClick={handleToggleEdit}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {/* Measurements */}
-      <div className="relative flex gap-3 pr-3 pb-2 pl-10">
-        <div className="text-muted-foreground text-xs">
-          Area: <span className="text-foreground">{area.toFixed(1)} m²</span>
-        </div>
-        <div className="text-muted-foreground text-xs">
-          Perimeter: <span className="text-foreground">{perimeter.toFixed(1)} m</span>
-        </div>
-      </div>
-
-      {/* Vertex list (shown when editing) */}
-      {isEditing && (
-        <div className="relative pr-3 pb-2 pl-10">
-          <div className="flex flex-col gap-1">
-            {points.map((point, index) => (
-              <div className="flex items-center gap-1.5 text-xs" key={index}>
-                <span className="w-4 shrink-0 text-right text-muted-foreground">{index + 1}</span>
-                <label className="shrink-0 text-muted-foreground">X</label>
-                <input
-                  className="w-16 rounded border border-border/50 bg-accent/50 px-1.5 py-0.5 text-foreground text-xs focus:border-primary focus:outline-none"
-                  onChange={(e) =>
-                    handlePointChange(index, 0, Number.parseFloat(e.target.value) || 0)
-                  }
-                  step={0.5}
-                  type="number"
-                  value={point[0]}
-                />
-                <label className="shrink-0 text-muted-foreground">Z</label>
-                <input
-                  className="w-16 rounded border border-border/50 bg-accent/50 px-1.5 py-0.5 text-foreground text-xs focus:border-primary focus:outline-none"
-                  onChange={(e) =>
-                    handlePointChange(index, 1, Number.parseFloat(e.target.value) || 0)
-                  }
-                  step={0.5}
-                  type="number"
-                  value={point[1]}
-                />
-                <button
-                  className={cn(
-                    'flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded',
-                    points.length > 3
-                      ? 'text-muted-foreground hover:bg-red-500/20 hover:text-red-400'
-                      : 'cursor-not-allowed text-muted-foreground/30',
-                  )}
-                  disabled={points.length <= 3}
-                  onClick={() => handleDeletePoint(index)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <button
-            className="mt-1.5 flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-accent/50 hover:text-foreground"
-            onClick={handleAddPoint}
-          >
-            <Plus className="h-3 w-3" />
-            Add point
-          </button>
-        </div>
-      )}
-    </div>
-  )
-})
 
 // ============================================================================
 // SITE PHASE VIEW - Property line + building buttons
@@ -1590,21 +1423,7 @@ export function SitePanel({ projectId, onUploadAsset, onDeleteAsset }: SitePanel
           className={cn('flex min-h-0 flex-1 flex-col', phase === 'site' && 'overflow-y-auto')}
           layout
         >
-          {/* When phase is site, show property line immediately under site header */}
-          <AnimatePresence initial={false}>
-            {phase === 'site' && (
-              <motion.div
-                animate={{ height: 'auto', opacity: 1 }}
-                className="shrink-0 overflow-hidden"
-                exit={{ height: 0, opacity: 0 }}
-                initial={{ height: 0, opacity: 0 }}
-                layout="position"
-                transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-              >
-                <PropertyLineSection />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Property Line section removed */}
 
           {/* Buildings List */}
           {buildings.length === 0 ? (

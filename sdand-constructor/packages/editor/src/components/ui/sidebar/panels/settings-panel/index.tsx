@@ -275,6 +275,8 @@ export function SettingsPanel({
   const handleResetToDefault = () => {
     clearScene()
     resetSelection()
+    useEditor.getState().setTool(null)
+    useEditor.getState().setMode('select')
     setPhase('structure')
     selectDefaultBuildingAndLevel()
   }
@@ -356,14 +358,14 @@ export function SettingsPanel({
 
       {/* Export Section */}
       <div className="space-y-2">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Export</label>
+        <label className="font-medium text-muted-foreground text-xs uppercase">Экспорт</label>
         <Button
           className="w-full justify-start gap-2"
           onClick={() => exportScene?.('glb')}
           variant="outline"
         >
           <Download className="size-4" />
-          Export GLB
+          Экспорт GLB
         </Button>
         <Button
           className="w-full justify-start gap-2"
@@ -371,7 +373,7 @@ export function SettingsPanel({
           variant="outline"
         >
           <Download className="size-4" />
-          Export STL
+          Экспорт STL
         </Button>
         <Button
           className="w-full justify-start gap-2"
@@ -379,7 +381,7 @@ export function SettingsPanel({
           variant="outline"
         >
           <Download className="size-4" />
-          Export OBJ
+          Экспорт OBJ
         </Button>
       </div>
 
@@ -401,11 +403,11 @@ export function SettingsPanel({
 
       {/* Save/Load Section */}
       <div className="space-y-2">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Save & Load</label>
+        <label className="font-medium text-muted-foreground text-xs uppercase">Сохранение и загрузка</label>
 
         <Button className="w-full justify-start gap-2" onClick={handleSaveBuild} variant="outline">
           <Save className="size-4" />
-          Save Build
+          Сохранить проект
         </Button>
 
         <Button
@@ -414,7 +416,7 @@ export function SettingsPanel({
           variant="outline"
         >
           <Upload className="size-4" />
-          Load Build
+          Открыть проект
         </Button>
 
         <input
@@ -434,23 +436,23 @@ export function SettingsPanel({
 
       {/* Audio Section */}
       <div className="space-y-2">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Audio</label>
+        <label className="font-medium text-muted-foreground text-xs uppercase">Звук</label>
         <AudioSettingsDialog />
       </div>
 
       {/* Keyboard Section */}
       <div className="space-y-2">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Keyboard</label>
+        <label className="font-medium text-muted-foreground text-xs uppercase">Горячие клавиши</label>
         <KeyboardShortcutsDialog />
       </div>
 
       {/* Scene Graph */}
       <div className="space-y-1">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Scene Graph</label>
+        <label className="font-medium text-muted-foreground text-xs uppercase">Граф сцены</label>
         <Dialog>
           <DialogTrigger asChild>
             <Button className="h-auto justify-start p-0 text-sm" variant="link">
-              Explore scene graph
+              Исследовать граф сцены
             </Button>
           </DialogTrigger>
           <DialogContent className="h-[80vh] max-w-[95vw] gap-0 overflow-hidden border-0 bg-[#1e1e1e] p-0 shadow-none sm:max-w-5xl">
@@ -472,7 +474,7 @@ export function SettingsPanel({
 
       {/* Danger Zone */}
       <div className="space-y-2">
-        <label className="font-medium text-destructive text-xs uppercase">Danger Zone</label>
+        <label className="font-medium text-destructive text-xs uppercase">Опасная зона</label>
 
         <Button
           className="w-full justify-start gap-2"
@@ -480,7 +482,7 @@ export function SettingsPanel({
           variant="destructive"
         >
           <Trash2 className="size-4" />
-          Clear & Start New
+          Очистить и начать заново
         </Button>
       </div>
     </div>

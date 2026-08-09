@@ -110,8 +110,8 @@ export type StructureTool =
 // Furnish mode tools (items and decoration)
 export type FurnishTool = 'item'
 
-// Site mode tools
-export type SiteTool = 'property-line'
+// Site mode tools (no draw tools for stand configurator)
+export type SiteTool = never
 
 // Catalog categories for furnish mode items
 export type CatalogCategory =
@@ -519,7 +519,7 @@ export function normalizePersistedEditorUiState(
     phase,
     mode,
     tool:
-      state?.tool && state.tool !== 'property-line' && state.tool !== 'zone' ? state.tool : 'wall',
+      state?.tool && state.tool !== 'zone' ? state.tool : 'wall',
     structureLayer,
     catalogCategory: state?.tool === 'item' ? (state.catalogCategory ?? null) : null,
     viewMode,
@@ -677,7 +677,7 @@ const useEditor = create<EditorState>()(
         if (mode === 'build') {
           // Stay in build mode, select the first tool for the new phase
           if (phase === 'site') {
-            set({ tool: 'property-line', catalogCategory: null })
+            set({ tool: null, catalogCategory: null })
           } else if (phase === 'structure' && structureLayer === 'zones') {
             set({ tool: 'zone', catalogCategory: null })
           } else if (phase === 'structure') {

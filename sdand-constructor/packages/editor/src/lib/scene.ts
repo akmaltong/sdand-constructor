@@ -269,8 +269,9 @@ export function syncEditorSelectionFromCurrentScene() {
   if (firstBuilding && firstLevel) {
     const isEmptyLevel = !firstLevel.children || firstLevel.children.length === 0
 
-    // For empty projects (new/blank), always start in structure/build/wall
-    // regardless of persisted state from a previous project
+    // Sdand: раньше пустой level автоматически активировал wall-tool —
+    // после Reset пользователь получал курсор-стену без явного выбора.
+    // Ставим select-режим, чтобы курсор оставался нейтральным.
     if (isEmptyLevel) {
       useViewer.getState().setSelection({
         buildingId: firstBuilding.id,
@@ -278,10 +279,9 @@ export function syncEditorSelectionFromCurrentScene() {
         selectedIds: [],
         zoneId: null,
       })
-      useEditor.getState().setPhase('structure')
-      useEditor.getState().setStructureLayer('elements')
-      useEditor.getState().setMode('build')
-      useEditor.getState().setTool('wall')
+      useEditor.getState().setPhase('site')
+      useEditor.getState().setMode('select')
+      useEditor.getState().setTool(null)
       return
     }
 

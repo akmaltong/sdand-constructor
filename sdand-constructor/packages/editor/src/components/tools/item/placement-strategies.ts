@@ -81,6 +81,68 @@ function isDescendantOfItem(
   return false
 }
 
+/**
+ * True if two items overlap in the same local XZ plane. Uses the same
+ * conservative rotated-bbox approximation as `canPlaceOnFloor` so a
+ * rotated footprint never under-reports a collision.
+ */
+function surfaceFootprintsOverlap(
+  aPos: [number, number, number],
+  aDims: [number, number, number],
+  aRotY: number,
+  bPos: [number, number, number],
+  bDims: [number, number, number],
+  bRotY: number,
+): boolean {
+  const aCos = Math.abs(Math.cos(aRotY))
+  const aSin = Math.abs(Math.sin(aRotY))
+  const aW = aDims[0] * aCos + aDims[2] * aSin
+  const aD = aDims[0] * aSin + aDims[2] * aCos
+  const bCos = Math.abs(Math.cos(bRotY))
+  const bSin = Math.abs(Math.sin(bRotY))
+  const bW = bDims[0] * bCos + bDims[2] * bSin
+  const bD = bDims[0] * bSin + bDims[2] * bCos
+  return (
+    Math.abs(aPos[0] - bPos[0]) < (aW + bW) / 2 &&
+    Math.abs(aPos[2] - bPos[2]) < (aD + bD) / 2
+  )
+}
+
+/**
+ * Collision check for items hosted on the same item surface (e.g. a
+ * podium): the draft must not overlap another non-low-profile child
+ * already sitting on that surface. Draft and children share the
+ * surface's local XZ frame, so no world transform is needed.
+ */
+function canPlaceOnItemSurface(
+  surfaceItemId: string,
+  draft: ItemNode,
+  nodes: Record<string, AnyNode>,
+): boolean {
+  const draftDims = getScaledDimensions(draft)
+  const draftRotY = draft.rotation?.[1] ?? 0
+  for (const node of Object.values(nodes)) {
+    if (node.type !== 'item' || node.parentId !== surfaceItemId) continue
+    if (node.id === draft.id) continue
+    const other = node as ItemNode
+    if (other.asset.attachTo) continue
+    if (isLowProfileItemSurface(other)) continue
+    if (
+      surfaceFootprintsOverlap(
+        draft.position,
+        draftDims,
+        draftRotY,
+        other.position,
+        getScaledDimensions(other),
+        other.rotation?.[1] ?? 0,
+      )
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
 // ============================================================================
 // FLOOR STRATEGY
 // ============================================================================
@@ -595,6 +657,12 @@ export const itemSurfaceStrategy = {
     if (!(ctx.draftItem && ctx.state.surfaceItemId)) return null
     if (_event.node.id !== ctx.state.surfaceItemId) return null
 
+    // Don't allow stacking another item on top of what's already on the
+    // surface — equipment/screens/podiums must not overlap each other.
+    if (!canPlaceOnItemSurface(ctx.state.surfaceItemId, ctx.draftItem, useScene.getState().nodes)) {
+      return null
+    }
+
     return {
       nodeUpdate: {
         position: [ctx.gridPosition.x, ctx.gridPosition.y, ctx.gridPosition.z],
@@ -768,9 +836,11 @@ function isUpwardShelfSurfaceHit(event: ShelfEvent): boolean {
 export function checkCanPlace(ctx: PlacementContext, validators: SpatialValidators): boolean {
   if (!(ctx.levelId && ctx.draftItem)) return false
 
-  // Item surface: valid if we entered (size check was in enter)
+  // Item surface: valid if we entered AND the draft doesn't overlap
+  // another item already on that surface.
   if (ctx.state.surface === 'item-surface') {
-    return ctx.state.surfaceItemId !== null
+    if (!ctx.state.surfaceItemId) return false
+    return canPlaceOnItemSurface(ctx.state.surfaceItemId, ctx.draftItem, useScene.getState().nodes)
   }
 
   // Shelf surface: same — size check already happened on enter

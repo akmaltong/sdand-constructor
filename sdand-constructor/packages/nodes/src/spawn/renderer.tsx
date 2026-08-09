@@ -25,6 +25,12 @@ const SPAWN_COLOR = new Color('#818cf8')
  */
 const SpawnRenderer = ({ node }: { node: SpawnNode }) => {
   const ref = useRef<Group>(null!)
+  useRegistry(node.id, 'spawn', ref)
+  // Sdand: спавн-флажок скрыт из сцены — конфигуратор стендов не использует
+  // walkthrough spawn points, а флажок мешает при работе. Registry всё
+  // ещё регистрирует node для кликов из сайдбара / удаления.
+  return <group ref={ref} visible={false} />
+  // eslint-disable-next-line no-unreachable
   const handlers = useNodeEvents(node, 'spawn')
   const liveOverride = useLiveNodeOverrides((state) => state.get(node.id as AnyNodeId))
   const effectiveNode = useMemo(
@@ -34,8 +40,6 @@ const SpawnRenderer = ({ node }: { node: SpawnNode }) => {
   const liveTransform = useLiveTransforms((state) => state.get(node.id))
   const walkthroughMode = useViewer((state) => state.walkthroughMode)
   const shading = useViewer((state) => state.shading)
-
-  useRegistry(node.id, 'spawn', ref)
 
   const material = useMemo(() => {
     const next = createDefaultMaterial('#818cf8', 0.42, shading) as ReturnType<

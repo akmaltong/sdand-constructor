@@ -28,6 +28,13 @@ function calculateHtmlPosition(el: Object3D, camera: Camera, size: ViewportSize)
 }
 
 export function SiteEdgeLabels() {
+  // Sdand: метки-размеры сторон site polygon скрыты — граница сайта
+  // не редактируется, соответствующие подписи не нужны.
+  return null
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _SiteEdgeLabelsOriginal() {
   // Narrow subscription to just the site node — subscribing to the full
   // s.nodes dict re-rendered this on every wall/level mutation even though
   // the site itself rarely changes.

@@ -20,9 +20,9 @@ const VENUES: Record<VenueId, VenueConfig & { label: string }> = {
   },
 }
 
-export function DefaultVenueSeeder({ venue = 'gostinka' }: { venue?: VenueId }) {
+export function DefaultVenueSeeder({ venue }: { venue?: VenueId | null }) {
   const nodes = useScene((s) => s.nodes)
-  const venueConfig = VENUES[venue]
+  const venueConfig = venue ? VENUES[venue] : null
 
   ;(globalThis as { __sdandSeederRender?: number }).__sdandSeederRender =
     ((globalThis as { __sdandSeederRender?: number }).__sdandSeederRender ?? 0) + 1
@@ -30,6 +30,18 @@ export function DefaultVenueSeeder({ venue = 'gostinka' }: { venue?: VenueId }) 
   useEffect(() => {
     ;(globalThis as { __sdandSeederEffect?: number }).__sdandSeederEffect =
       ((globalThis as { __sdandSeederEffect?: number }).__sdandSeederEffect ?? 0) + 1
+
+    // venue=null → удалить все venue-scan ноды и не создавать новую.
+    if (!venueConfig) {
+      const state = useScene.getState()
+      const deadScans = Object.entries(state.nodes).filter(
+        ([, n]) =>
+          (n as { type?: string; metadata?: { tag?: string } }).type === 'scan' &&
+          (n as { metadata?: { tag?: string } }).metadata?.tag === 'sdand:default-venue',
+      )
+      for (const [id] of deadScans) state.deleteNode(id as never)
+      return
+    }
 
     const result = syncDefaultVenue(useScene.getState(), venueConfig, CATALOG_ITEMS)
 
@@ -64,10 +76,6 @@ export function DefaultVenueSeeder({ venue = 'gostinka' }: { venue?: VenueId }) 
 
     if (result.created) {
       console.log('[sdand] default venue seeded under level', result.levelId, venue)
-      const created = useScene.getState().nodes['scan_default_venue' as never] as
-        | { parentId?: string | null; position?: unknown }
-        | undefined
-      console.log('[sdand] scan node parentId:', created?.parentId, 'position:', created?.position)
     }
   }, [nodes, venue, venueConfig])
 

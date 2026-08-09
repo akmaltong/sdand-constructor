@@ -11,7 +11,7 @@ import {
   useEditor,
   useScene,
 } from '@pascal-app/editor'
-import { Hammer, Layers, RotateCcw, Settings, Upload } from 'lucide-react'
+import { ChevronDown, Hammer, Layers, RotateCcw, Settings, Upload } from 'lucide-react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BuildTab } from '@/components/build-tab'
@@ -185,10 +185,12 @@ const SIDEBAR_TABS = [
 
 const PROJECT_ID = 'local-editor'
 
+const VENUE_LABELS: Record<VenueId, string> = { gostinka: 'Гостинка', manezh: 'Манеж' }
+
 export default function Home() {
   const [showWelcome, setShowWelcome] = useState(false)
   const [selectedVenue, setSelectedVenue] = useState<VenueId | null>(null)
-  const [showVenuePicker, setShowVenuePicker] = useState(true)
+  const [venueDropdownOpen, setVenueDropdownOpen] = useState(false)
 
   // Clear persisted scene + tool state before anything loads
   useEffect(() => {
@@ -205,7 +207,7 @@ export default function Home() {
 
   const handleVenueSelect = useCallback((venue: VenueId) => {
     setSelectedVenue(venue)
-    setShowVenuePicker(false)
+    setVenueDropdownOpen(false)
     // Clear persisted editor state so no tool is active from previous session
     const ed = useEditor.getState()
     ed.setPhase('site')
@@ -238,9 +240,10 @@ export default function Home() {
     ed.setCatalogCategory(null)
     ed.setSelectedItem(null as never)
     applySceneGraphToEditor(null)
-    // Показать меню выбора площадки
+    // Сбросить площадку — сидер удалит venue-scan; пользователь выберет заново
+    // через кнопку в центре сверху.
     setSelectedVenue(null)
-    setShowVenuePicker(true)
+    setVenueDropdownOpen(true)
   }, [])
 
   return (
@@ -256,26 +259,34 @@ export default function Home() {
           Reset
         </button>
       </div>
-      {showVenuePicker ? (
-        <div className="pointer-events-auto absolute inset-x-0 top-16 z-50 mx-auto flex w-[min(480px,calc(100%-2rem))] flex-col gap-3 rounded-2xl border border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-semibold text-sm">Выберите площадку</p>
-              <p className="mt-1 text-muted-foreground text-xs">Начните с выбора выставочной площадки.</p>
+      <div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center">
+        <div className="pointer-events-auto relative">
+          <button
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur transition hover:bg-accent/40"
+            onClick={() => setVenueDropdownOpen((v) => !v)}
+            type="button"
+          >
+            <span className="text-muted-foreground">Площадка:</span>
+            <span>{selectedVenue ? VENUE_LABELS[selectedVenue] : 'выбрать'}</span>
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+          {venueDropdownOpen ? (
+            <div className="absolute top-full left-1/2 mt-1.5 w-52 -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-background/95 shadow-2xl backdrop-blur">
+              {(['gostinka', 'manezh'] as const).map((v) => (
+                <button
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-accent/40"
+                  key={v}
+                  onClick={() => handleVenueSelect(v)}
+                  type="button"
+                >
+                  <span>{VENUE_LABELS[v]}</span>
+                  {selectedVenue === v ? <span className="text-primary">●</span> : null}
+                </button>
+              ))}
             </div>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button className="rounded-xl border border-border bg-muted/30 p-3 text-left transition hover:bg-muted/60" onClick={() => handleVenueSelect('gostinka')} type="button">
-              <p className="font-medium text-sm">Гостинка</p>
-              <p className="mt-1 text-muted-foreground text-xs">Базовая выставочная площадка</p>
-            </button>
-            <button className="rounded-xl border border-border bg-muted/30 p-3 text-left transition hover:bg-muted/60" onClick={() => handleVenueSelect('manezh')} type="button">
-              <p className="font-medium text-sm">Манеж</p>
-              <p className="mt-1 text-muted-foreground text-xs">Компактная площадка</p>
-            </button>
-          </div>
+          ) : null}
         </div>
-      ) : null}
+      </div>
       {showWelcome ? (
         <div className="pointer-events-auto absolute inset-x-0 top-16 z-50 mx-auto flex w-[min(560px,calc(100%-2rem))] flex-col gap-3 rounded-2xl border border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
           <div className="flex items-start justify-between gap-3">

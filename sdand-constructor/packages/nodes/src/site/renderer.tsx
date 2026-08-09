@@ -145,7 +145,10 @@ export const SiteRenderer = ({ node }: { node: SiteNode }) => {
 
   const handlers = useNodeEvents(node, 'site')
 
-  if (!(node && lineGeometry)) {
+  // Sdand: раньше отсутствие polygon-геометрии прятало ВСЮ сцену
+  // (site → building → level → scan → items). Теперь polygon пустой по
+  // умолчанию — нельзя блокировать рендер детей на нём.
+  if (!node) {
     return null
   }
 

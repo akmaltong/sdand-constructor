@@ -11,7 +11,7 @@ import {
   useEditor,
   useScene,
 } from '@pascal-app/editor'
-import { ChevronDown, Hammer, Layers, RotateCcw, Settings, Upload } from 'lucide-react'
+import { ChevronDown, Hammer, Layers, RotateCcw, Settings, Upload, X } from 'lucide-react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BuildTab } from '@/components/build-tab'
@@ -228,6 +228,18 @@ export default function Home() {
     setShowWelcome(false)
   }, [])
 
+  // Работает как Esc: снимает активный инструмент, возвращает нейтральный
+  // курсор. Особенно важно на планшете/телефоне где нет физической клавиши.
+  const activeTool = useEditor((s) => s.tool)
+  const activeMode = useEditor((s) => s.mode)
+  const handleClearTool = useCallback(() => {
+    const ed = useEditor.getState()
+    ed.setTool(null)
+    ed.setMode('select')
+    ed.setSelectedItem(null as never)
+    ed.setCatalogCategory(null)
+  }, [])
+
   const handleReset = useCallback(() => {
     // Clear persisted state FIRST so zustand persist does not restore old tool/mode
     localStorage.removeItem('pascal-editor-ui-preferences')
@@ -250,8 +262,18 @@ export default function Home() {
     <div className="relative h-screen w-screen">
       {selectedVenue && <DefaultVenueSeeder venue={selectedVenue} />}
       <div className="pointer-events-none absolute top-4 right-4 z-40 flex items-center gap-2">
+        {(activeTool || activeMode === 'build' || activeMode === 'material-paint') && (
+          <button
+            className="pointer-events-auto inline-flex touch-manipulation items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60"
+            onClick={handleClearTool}
+            type="button"
+          >
+            <X className="h-3.5 w-3.5" />
+            Отмена
+          </button>
+        )}
         <button
-          className="pointer-events-auto inline-flex items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40"
+          className="pointer-events-auto inline-flex touch-manipulation items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60"
           onClick={handleReset}
           type="button"
         >

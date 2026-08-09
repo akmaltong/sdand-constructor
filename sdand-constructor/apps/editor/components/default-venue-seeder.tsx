@@ -9,9 +9,10 @@ export type VenueId = 'gostinka' | 'manezh'
 
 const VENUES: Record<VenueId, VenueConfig & { label: string }> = {
   gostinka: {
-    url: '/venues/SM_GOSTINKA.glb?v=2',
+    // Обновлено: SM_GostinnyDwor.glb (bbox из scratchpad/measure-glb.mjs)
+    url: '/venues/SM_GostinnyDwor.glb',
     label: 'Гостинка',
-    footprint: { x: -97.7, z: -50.3, width: 201, depth: 91 },
+    footprint: { x: -97.7, z: -50.3, width: 197.18, depth: 91.24 },
   },
   manezh: {
     url: '/venues/SM_Manezh.glb?v=2',

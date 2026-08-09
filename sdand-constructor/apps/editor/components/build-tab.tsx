@@ -4,8 +4,8 @@ import type { AssetInput } from '@pascal-app/core'
 import { GuideNode, useScene } from '@pascal-app/core'
 import { CATALOG_ITEMS, ItemCatalog, MaterialPaintPanel, getDefaultCatalogItem, triggerSFX, useEditor } from '@pascal-app/editor'
 import { useViewer } from '@pascal-app/viewer'
-import { Boxes, Layers, Loader2, Map, Package, PencilRuler, Square, Upload, Wand2 } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
+import { Boxes, ChevronDown, Layers, Loader2, Map, Package, PencilRuler, Square, Upload, Wand2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Tooltip,
   TooltipContent,
@@ -224,6 +224,23 @@ export function BuildTab() {
    * group, cache it, then activate item placement. The editor stays responsive
    * while large files are being parsed.
    */
+  // История импортированных стендов на время сессии. Blob-URL мертвеют
+  // после reload, поэтому не персистим.
+  const [importedStands, setImportedStands] = useState<AssetInput[]>([])
+  const [standListOpen, setStandListOpen] = useState(false)
+
+  const activateImportedStand = useCallback(async (asset: AssetInput) => {
+    const ed = useEditor.getState()
+    ed.setPhase('structure')
+    ed.setStructureLayer('elements')
+    ed.setMode('build')
+    ed.setSelectedItem(asset as never)
+    ed.setCatalogCategory(null)
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    ed.setTool('item')
+    setStandListOpen(false)
+  }, [])
+
   const handleLoadStandClick = useCallback(async () => {
     const file = await pickStandFile()
     if (!file) return
@@ -265,17 +282,9 @@ export function BuildTab() {
         source: 'mine',
       }
 
-      // Разносим store-updates по кадрам, чтобы React успел закоммитить
-      // selectedItem до активации placement-tool. Иначе один синхронный
-      // тик держит main thread во время <Clone> большой модели.
-      const ed = useEditor.getState()
-      ed.setPhase('structure')
-      ed.setStructureLayer('elements')
-      ed.setMode('build')
-      ed.setSelectedItem(asset as never)
-      ed.setCatalogCategory(null)
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-      ed.setTool('item')
+      // Добавляем в историю (уникально по asset.id), сразу активируем.
+      setImportedStands((prev) => [asset, ...prev.filter((a) => a.id !== asset.id)])
+      await activateImportedStand(asset)
     } catch (error) {
       console.error('[stand-import]', error)
       setStandError(
@@ -374,6 +383,55 @@ export function BuildTab() {
       </TooltipProvider>
 
       {standError && <p className="px-1 text-destructive text-xs">{standError}</p>}
+
+      {/* История импортированных стендов на время сессии. Клик по превью
+          повторно активирует placement того же asset — файл заново не
+          парсится, THREE.Group уже в stand-model-cache. */}
+      {importedStands.length > 0 && (
+        <div className="rounded-xl border border-border/60 bg-background/70">
+          <button
+            className="flex w-full items-center justify-between rounded-t-xl px-3 py-1.5 text-foreground/80 text-xs hover:bg-muted/60"
+            onClick={() => setStandListOpen((v) => !v)}
+            type="button"
+          >
+            <span>Мои стенды ({importedStands.length})</span>
+            <ChevronDown
+              className={cn(
+                'h-3.5 w-3.5 transition-transform',
+                standListOpen && 'rotate-180',
+              )}
+            />
+          </button>
+          {standListOpen && (
+            <div
+              className="grid gap-1.5 border-t border-border/40 p-2"
+              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))' }}
+            >
+              {importedStands.map((asset) => (
+                <button
+                  className="group flex flex-col items-center gap-1 rounded-lg p-1 hover:bg-muted/60"
+                  key={asset.id}
+                  onClick={() => {
+                    triggerSFX('sfx:menu-click')
+                    void activateImportedStand(asset)
+                  }}
+                  title={asset.name}
+                  type="button"
+                >
+                  <img
+                    alt={asset.name}
+                    className="h-12 w-12 rounded-md object-cover"
+                    src={asset.thumbnail}
+                  />
+                  <span className="w-full truncate text-[10px] text-muted-foreground group-hover:text-foreground">
+                    {asset.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Загрузка плана — отдельная кнопка, создаёт GuideNode (подложка на полу) */}
       {editorMode !== 'material-paint' && !(editorTool === 'item' && catalogCategory) && (

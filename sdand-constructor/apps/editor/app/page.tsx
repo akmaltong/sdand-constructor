@@ -241,9 +241,9 @@ export default function Home() {
     ed.setSelectedItem(null as never)
     applySceneGraphToEditor(null)
     // Сбросить площадку — сидер удалит venue-scan; пользователь выберет заново
-    // через кнопку в центре сверху.
+    // через свёрнутую кнопку в центре сверху.
     setSelectedVenue(null)
-    setVenueDropdownOpen(true)
+    setVenueDropdownOpen(false)
   }, [])
 
   return (
@@ -271,10 +271,10 @@ export default function Home() {
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
           {venueDropdownOpen ? (
-            <div className="absolute top-full left-1/2 mt-1.5 w-52 -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-background/95 shadow-2xl backdrop-blur">
+            <div className="absolute top-full left-1/2 mt-1.5 flex -translate-x-1/2 gap-1 rounded-xl border border-border bg-background/95 p-1 shadow-2xl backdrop-blur">
               {(['gostinka', 'manezh'] as const).map((v) => (
                 <button
-                  className="flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-accent/40"
+                  className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs whitespace-nowrap hover:bg-accent/40"
                   key={v}
                   onClick={() => handleVenueSelect(v)}
                   type="button"

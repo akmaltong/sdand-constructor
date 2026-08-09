@@ -20,15 +20,11 @@ export const SiteNode = BaseNode.extend({
   id: objectId('site'),
   type: nodeType('site'),
   // Specific props
+  // Sdand: property-line disabled by default. Пустой polygon → renderers
+  // skip site outline / edge labels / 2D dashed rectangle.
   polygon: PropertyLineData.optional().default({
     type: 'polygon',
-    // Default 30x30 square centered at origin
-    points: [
-      [-15, -15],
-      [15, -15],
-      [15, 15],
-      [-15, 15],
-    ],
+    points: [],
   }),
   // terrain: TerrainData,
   children: z.array(z.string()).default([]),

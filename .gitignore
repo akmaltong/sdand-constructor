@@ -33,3 +33,4 @@ sdand-constructor/external-equipment-catalog/
 # Локальные IDE/агент конфиги
 .claude/settings.local.json
 .claude/**/skills
+backups/

@@ -11,9 +11,10 @@ import {
   useEditor,
   useScene,
 } from '@pascal-app/editor'
-import { Check, ChevronDown, Hammer, Layers, RotateCcw, Settings, Upload } from 'lucide-react'
+import { emitter } from '@pascal-app/core'
+import { Check, ChevronDown, Hammer, RotateCcw, Settings, Undo2, Upload } from 'lucide-react'
 import Image from 'next/image'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { BuildTab } from '@/components/build-tab'
 import { DefaultVenueSeeder, type VenueId } from '@/components/default-venue-seeder'
 import {
@@ -142,22 +143,6 @@ function EditorItemsPanel() {
 
 const SIDEBAR_TABS = [
   {
-    id: 'site',
-    label: 'Сцена',
-    component: () => null,
-    mobileDefaultSnap: 0.5,
-    mobileIcon: <Layers className="h-5 w-5" />,
-    icon: (
-      <Image
-        alt=""
-        className="h-8 w-8 object-contain"
-        height={32}
-        src="/icons/scene.png"
-        width={32}
-      />
-    ),
-  },
-  {
     id: 'build',
     label: 'Стройка',
     component: BuildTab,
@@ -234,10 +219,26 @@ export default function Home() {
   const activeMode = useEditor((s) => s.mode)
   const handleClearTool = useCallback(() => {
     const ed = useEditor.getState()
+    // Если рисуем подиум — DONE замыкает контур (SlabTool обработает slab:commit)
+    if (ed.tool === 'slab') {
+      emitter.emit('slab:commit' as never)
+      return
+    }
     ed.setTool(null)
     ed.setMode('select')
     ed.setSelectedItem(null as never)
     ed.setCatalogCategory(null)
+  }, [])
+
+  // Undo через Zundo temporal store
+  const pastStatesLength = useSyncExternalStore(
+    (cb) => useScene.temporal.subscribe(cb),
+    () => useScene.temporal.getState().pastStates.length,
+    () => 0,
+  )
+  const canUndo = pastStatesLength > 0
+  const handleUndo = useCallback(() => {
+    useScene.temporal.getState().undo()
   }, [])
 
   const handleReset = useCallback(() => {
@@ -252,16 +253,34 @@ export default function Home() {
     ed.setCatalogCategory(null)
     ed.setSelectedItem(null as never)
     applySceneGraphToEditor(null)
-    // Сбросить площадку — сидер удалит venue-scan; пользователь выберет заново
-    // через свёрнутую кнопку в центре сверху.
-    setSelectedVenue(null)
+    // Площадка СОХРАНЯЕТСЯ — DefaultVenueSeeder пересеет venue-scan автоматически.
+    // setSelectedVenue(null) намеренно убран.
     setVenueDropdownOpen(false)
   }, [])
 
   return (
-    <div className="relative h-screen w-screen">
+    <div
+      className="relative w-screen"
+      style={{
+        height: '100dvh',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}
+    >
       {selectedVenue && <DefaultVenueSeeder venue={selectedVenue} />}
       <div className="pointer-events-none absolute top-4 right-4 z-40 flex items-center gap-2">
+        <button
+          aria-label="Отменить"
+          className="pointer-events-auto inline-flex touch-manipulation items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60 disabled:cursor-not-allowed disabled:opacity-40"
+          disabled={!canUndo}
+          onClick={handleUndo}
+          type="button"
+        >
+          <Undo2 className="h-3.5 w-3.5" />
+          Undo
+        </button>
         <button
           className="pointer-events-auto inline-flex touch-manipulation items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60"
           onClick={handleReset}

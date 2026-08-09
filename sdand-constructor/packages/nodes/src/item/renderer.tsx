@@ -34,6 +34,7 @@ import { Suspense, useEffect, useMemo, useRef } from 'react'
 import type { AnimationAction, Group, Material, Mesh } from 'three'
 import { MathUtils, MeshBasicMaterial, TextureLoader } from 'three'
 import { positionLocal, smoothstep, time } from 'three/tsl'
+import { getStandModel } from './stand-model-cache'
 
 type MutableMaterial = Material & {
   depthTest?: boolean
@@ -153,6 +154,7 @@ export const ItemRenderer = ({ node: storeNode }: { node: ItemNode }) => {
     (node as ItemNode & { roomClearPreview?: unknown }).roomClearPreview === true
 
   const primitive = parsePrimitive(node.asset.src)
+  const standModel = useMemo(() => getStandModel(node.asset.src), [node.asset.src])
 
   return (
     <group position={node.position} ref={ref} rotation={node.rotation} visible={node.visible}>
@@ -165,6 +167,13 @@ export const ItemRenderer = ({ node: storeNode }: { node: ItemNode }) => {
           ) : (
             <PrimitiveTexturedItem node={node} url={primitive.url} />
           )}
+          {node.children?.map((childId) => (
+            <NodeRenderer key={childId} nodeId={childId} />
+          ))}
+        </>
+      ) : standModel ? (
+        <>
+          <StandModelRenderer node={node} scene={standModel} />
           {node.children?.map((childId) => (
             <NodeRenderer key={childId} nodeId={childId} />
           ))}
@@ -237,6 +246,50 @@ const multiplyScales = (
   b: [number, number, number],
 ): [number, number, number] => [a[0] * b[0], a[1] * b[1], a[2] * b[2]]
 
+const applyItemMaterialOverrides = (
+  scene: Group,
+  shading: RenderShading,
+  textures: boolean,
+  colorPreset: ColorPreset,
+): void => {
+  scene.traverse((child) => {
+    if ((child as Mesh).isMesh) {
+      const mesh = child as Mesh
+      if (mesh.name === 'cutout') {
+        child.visible = false
+        return
+      }
+
+      let hasGlass = false
+
+      // Handle both single material and material array cases
+      if (Array.isArray(mesh.material)) {
+        mesh.material = mesh.material.map((mat) =>
+          getMaterialForOriginal(mat, shading, textures, colorPreset),
+        )
+        hasGlass = mesh.material.some((mat) => mat.name === 'glass')
+
+        // Fix geometry groups that reference materialIndex beyond the material
+        // array length — this causes three-mesh-bvh to crash with
+        // "Cannot read properties of undefined (reading 'side')"
+        const matCount = mesh.material.length
+        if (mesh.geometry.groups.length > 0) {
+          for (const group of mesh.geometry.groups) {
+            if (group.materialIndex !== undefined && group.materialIndex >= matCount) {
+              group.materialIndex = 0
+            }
+          }
+        }
+      } else {
+        mesh.material = getMaterialForOriginal(mesh.material, shading, textures, colorPreset)
+        hasGlass = mesh.material.name === 'glass'
+      }
+      mesh.castShadow = !hasGlass
+      mesh.receiveShadow = !hasGlass
+    }
+  })
+}
+
 const ModelRenderer = ({ node }: { node: ItemNode }) => {
   const { scene, nodes, animations } = useGLTF(resolveCdnUrl(node.asset.src) || '')
   const ref = useRef<Group>(null!)
@@ -266,42 +319,7 @@ const ModelRenderer = ({ node }: { node: ItemNode }) => {
   }, [node.id])
 
   useMemo(() => {
-    scene.traverse((child) => {
-      if ((child as Mesh).isMesh) {
-        const mesh = child as Mesh
-        if (mesh.name === 'cutout') {
-          child.visible = false
-          return
-        }
-
-        let hasGlass = false
-
-        // Handle both single material and material array cases
-        if (Array.isArray(mesh.material)) {
-          mesh.material = mesh.material.map((mat) =>
-            getMaterialForOriginal(mat, shading, textures, colorPreset),
-          )
-          hasGlass = mesh.material.some((mat) => mat.name === 'glass')
-
-          // Fix geometry groups that reference materialIndex beyond the material
-          // array length — this causes three-mesh-bvh to crash with
-          // "Cannot read properties of undefined (reading 'side')"
-          const matCount = mesh.material.length
-          if (mesh.geometry.groups.length > 0) {
-            for (const group of mesh.geometry.groups) {
-              if (group.materialIndex !== undefined && group.materialIndex >= matCount) {
-                group.materialIndex = 0
-              }
-            }
-          }
-        } else {
-          mesh.material = getMaterialForOriginal(mesh.material, shading, textures, colorPreset)
-          hasGlass = mesh.material.name === 'glass'
-        }
-        mesh.castShadow = !hasGlass
-        mesh.receiveShadow = !hasGlass
-      }
-    })
+    applyItemMaterialOverrides(scene, shading, textures, colorPreset)
   }, [scene, shading, textures, colorPreset])
 
   const interactive = interactiveRef.current
@@ -332,6 +350,60 @@ const ModelRenderer = ({ node }: { node: ItemNode }) => {
           nodeId={node.id}
         />
       )}
+      {lightEffects.map((effect, i) => (
+        <ItemLightRegistrar
+          effect={effect}
+          index={i}
+          interactive={interactive!}
+          key={i}
+          nodeId={node.id}
+        />
+      ))}
+    </>
+  )
+}
+
+/**
+ * Renderer for imported stand models: the scene is already built and cached
+ * by `apps/editor/lib/stand-import.ts`, so this mounts instantly without a
+ * second main-thread GLTF parse. Mirrors ModelRenderer's interactive wiring.
+ * Materials are already correct (built in the worker) — no override needed.
+ */
+const StandModelRenderer = ({ node, scene }: { node: ItemNode; scene: Group }) => {
+  const ref = useRef<Group>(null!)
+  const interactiveRef = useRef(node.asset.interactive)
+
+  const handlers = useNodeEvents(node, 'item')
+
+  useEffect(() => {
+    if (!node.parentId) return
+    useScene.getState().markDirty(node.parentId as AnyNodeId)
+  }, [node.parentId])
+
+  useEffect(() => {
+    const interactive = interactiveRef.current
+    if (!interactive) return
+    useInteractive.getState().initItem(node.id, interactive)
+    return () => useInteractive.getState().removeItem(node.id)
+  }, [node.id])
+
+  const interactive = interactiveRef.current
+  const lightEffects =
+    interactive?.effects.filter((e): e is LightEffect => e.kind === 'light') ?? []
+
+  // The cached scene is shared by every clone of the same asset — Clone shares
+  // geometry/material references, so duplicating an imported stand is cheap.
+  return (
+    <>
+      <Clone
+        dispose={null}
+        object={scene}
+        position={node.asset.offset}
+        ref={ref}
+        rotation={node.asset.rotation}
+        scale={multiplyScales(node.asset.scale || [1, 1, 1], node.scale || [1, 1, 1])}
+        {...handlers}
+      />
       {lightEffects.map((effect, i) => (
         <ItemLightRegistrar
           effect={effect}

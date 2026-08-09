@@ -1,4 +1,5 @@
 import { GeistPixelSquare } from 'geist/font/pixel'
+import type { Metadata, Viewport } from 'next'
 import { Barlow } from 'next/font/google'
 import localFont from 'next/font/local'
 import { ClientBootstrap } from './client-bootstrap'
@@ -19,6 +20,14 @@ const barlow = Barlow({
   variable: '--font-barlow',
   display: 'swap',
 })
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+
+export const metadata: Metadata = {}
 
 export default function RootLayout({
   children,

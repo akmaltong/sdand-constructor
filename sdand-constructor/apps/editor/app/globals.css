@@ -147,6 +147,26 @@
   }
 }
 
+/* Мобильный полный экран: dynamic viewport height + iOS safe area */
+html,
+body {
+  height: 100%;
+}
+
+body > #__next,
+body > div,
+main {
+  min-height: 100dvh;
+}
+
+/* Safe area для iOS notch / home bar */
+.safe-area-inset {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
 /* Apple-style smooth corners (squircle) — progressive enhancement */
 .rounded-smooth {
   border-radius: var(--radius-lg);

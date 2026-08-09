@@ -214,6 +214,12 @@ export function EditorLayoutV2({
 }: EditorLayoutV2Props) {
   const isCaptureMode = useEditor((s) => s.isCaptureMode)
   const isMobile = useIsMobile()
+  const setIsCollapsed = useSidebarStore((s) => s.setIsCollapsed)
+
+  // Всегда стартуем со свёрнутым сайдбаром — игнорируем персистированное состояние
+  useEffect(() => {
+    setIsCollapsed(true)
+  }, [setIsCollapsed])
 
   if (isMobile) {
     return (

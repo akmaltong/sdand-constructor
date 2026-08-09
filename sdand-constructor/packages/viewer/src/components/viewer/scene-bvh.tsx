@@ -74,6 +74,10 @@ export const SceneBvh = forwardRef<Group, SceneBvhProps>(
       group.traverse((child) => {
         if (!isMesh(child)) return
 
+        // Imported stands carry huge merged geometry — building a SAH BVH for
+        // them freezes the frame; plain Mesh.raycast is plenty for picking.
+        if (child.geometry?.userData?.skipBvh) return
+
         if (child.raycast === Mesh.prototype.raycast) {
           child.raycast = acceleratedRaycast
           acceleratedMeshes.add(child)

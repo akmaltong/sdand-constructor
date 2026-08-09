@@ -201,6 +201,18 @@ export const SlabTool: React.FC = () => {
       useAlignmentGuides.getState().clear()
     }
 
+    const onSlabCommit = () => {
+      if (points.length >= 3 && currentLevelId) {
+        const slabId = commitSlabDrawing(currentLevelId, points)
+        setSelection({ selectedIds: [slabId] })
+        setPoints([])
+        useAlignmentGuides.getState().clear()
+      }
+      // В любом случае сбрасываем инструмент (даже если точек < 3)
+      markToolCancelConsumed()
+      emitter.emit('tool:cancel')
+    }
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift') shiftPressed.current = true
     }
@@ -214,6 +226,7 @@ export const SlabTool: React.FC = () => {
     emitter.on('grid:click', onGridClick)
     emitter.on('grid:double-click', onGridDoubleClick)
     emitter.on('tool:cancel', onCancel)
+    emitter.on('slab:commit' as never, onSlabCommit)
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
@@ -222,6 +235,7 @@ export const SlabTool: React.FC = () => {
       emitter.off('grid:click', onGridClick)
       emitter.off('grid:double-click', onGridDoubleClick)
       emitter.off('tool:cancel', onCancel)
+      emitter.off('slab:commit' as never, onSlabCommit)
     }
   }, [currentLevelId, points, cursorPosition, setSelection])
 

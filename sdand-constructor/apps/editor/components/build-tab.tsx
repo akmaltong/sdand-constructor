@@ -1,9 +1,11 @@
 'use client'
 
 import type { AssetInput } from '@pascal-app/core'
+import { GuideNode, useScene } from '@pascal-app/core'
 import { CATALOG_ITEMS, ItemCatalog, MaterialPaintPanel, getDefaultCatalogItem, triggerSFX, useEditor } from '@pascal-app/editor'
-import { Boxes, Layers, Package, PencilRuler, Square, Upload, Wand2 } from 'lucide-react'
-import { useCallback } from 'react'
+import { useViewer } from '@pascal-app/viewer'
+import { Boxes, Layers, Loader2, Map, Package, PencilRuler, Square, Upload, Wand2 } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
 import {
   Tooltip,
   TooltipContent,
@@ -11,6 +13,7 @@ import {
   TooltipTrigger,
 } from '@/components/toolbar-tooltip'
 import { cn } from '@/lib/utils'
+import { importStandModel } from '@/lib/stand-import'
 
 /**
  * Raw structure-tool kinds the Build tab can activate. These map 1:1 to the
@@ -77,47 +80,126 @@ function activatePaintMode(): void {
   ed.setMode('material-paint')
 }
 
-/** Import GLB/GLTF model from user's PC and place it into the scene */
-function loadStandFromFile(): void {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.glb,.gltf'
-  input.onchange = (e: Event) => {
-    const file = (e.target as HTMLInputElement).files?.[0]
-    if (!file) return
+/**
+ * Open a file picker for GLB/GLTF and resolve the selected File (null on cancel).
+ * Sdand: раньше был setTimeout(300)-fallback, но пользователь выбирает файл
+ * дольше — таймер срабатывал первым и резолвил null, а последующий real change
+ * терялся (input уже удалён). Слушаем `cancel` (Chromium 113+) и `focus` окна
+ * как эвристику для case «диалог закрыт без файла».
+ */
+function pickStandFile(): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.glb,.gltf'
+    input.style.display = 'none'
+    document.body.appendChild(input)
 
-    const url = URL.createObjectURL(file)
-    const baseName = file.name.replace(/\.[^.]+$/, '')
-
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90'>
-      <rect width='90' height='90' fill='#1f2937'/>
-      <rect x='15' y='15' width='60' height='60' rx='8' fill='#64748b'/>
-      <text x='45' y='52' text-anchor='middle' font-family='sans-serif' font-size='14' font-weight='700' fill='white'>GLB</text>
-    </svg>`
-    const thumbnail = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
-
-    const asset: AssetInput = {
-      id: `import-${Date.now()}-${baseName}`,
-      category: 'furniture',
-      name: baseName,
-      thumbnail,
-      tags: ['import'],
-      src: url,
-      dimensions: [1, 1, 1],
-      offset: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      source: 'mine',
+    let settled = false
+    const cleanup = () => {
+      if (document.body.contains(input)) document.body.removeChild(input)
+      window.removeEventListener('focus', onFocus)
     }
+    const finish = (file: File | null) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve(file)
+    }
+    const onChange = () => finish(input.files?.[0] ?? null)
+    const onCancel = () => finish(null)
+    const onFocus = () => {
+      // Диалог мог быть закрыт без выбора; ждём микротик, чтобы change успел
+      // сработать первым, если файл выбран.
+      setTimeout(() => {
+        if (!input.files?.length) finish(null)
+      }, 500)
+    }
+    input.addEventListener('change', onChange, { once: true })
+    input.addEventListener('cancel', onCancel, { once: true })
+    window.addEventListener('focus', onFocus)
+    input.click()
+  })
+}
 
-    const ed = useEditor.getState()
-    ed.setPhase('structure')
-    ed.setStructureLayer('elements')
-    ed.setMode('build')
-    ed.setTool('item')
-    ed.setSelectedItem(asset as never)
-  }
-  input.click()
+/**
+ * Кнопка «Загрузить план» — точная копия функции из панели иерархии.
+ * image (png/jpg/webp) → GuideNode: подложка-планировка на полу (2D + 3D)
+ */
+function LoadPlanButton() {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const levelId = useViewer((s) => s.selection.levelId)
+  const setShowGuides = useViewer((s) => s.setShowGuides)
+  const createNode = useScene((s) => s.createNode)
+  const setSelectedReferenceId = useEditor((s) => s.setSelectedReferenceId)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading] = useState(false)
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!(file && levelId)) return
+      e.target.value = ''
+      setError(null)
+
+      const isImage = file.type.startsWith('image/')
+
+      if (!isImage) {
+        setError('Нужен файл: .png, .jpg, .jpeg, .webp или .gif')
+        return
+      }
+
+      // Используем blob URL напрямую — saveAsset (IndexedDB) вешает UI на больших файлах
+      const assetUrl = URL.createObjectURL(file)
+      const name = file.name.replace(/\.[^.]+$/, '')
+
+      const guide = GuideNode.parse({
+        name,
+        url: assetUrl,
+        position: [0, 0, 0] as [number, number, number],
+        rotation: [0, 0, 0] as [number, number, number],
+        scale: 1,
+        opacity: 50,
+        scaleReference: null,
+      })
+      createNode(guide, levelId as never)
+      setShowGuides(true)
+      setSelectedReferenceId(guide.id)
+    },
+    [createNode, levelId, setSelectedReferenceId, setShowGuides],
+  )
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        className={cn(
+          'flex w-full items-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/30 px-3 py-2 text-sm transition-colors hover:border-primary/60 hover:bg-primary/5',
+          isLoading && 'cursor-wait opacity-60',
+          !levelId && 'cursor-not-allowed opacity-40',
+        )}
+        disabled={isLoading || !levelId}
+        onClick={() => {
+          triggerSFX('sfx:menu-click')
+          fileInputRef.current?.click()
+        }}
+        title={!levelId ? 'Сначала выберите площадку' : 'Загрузить план (jpg/png/webp)'}
+        type="button"
+      >
+        <Map className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="text-foreground/80">
+          {isLoading ? 'Загрузка…' : 'Загрузить план'}
+        </span>
+      </button>
+      {error && <p className="px-1 text-destructive text-xs">{error}</p>}
+      <input
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={handleFileChange}
+        ref={fileInputRef}
+        type="file"
+      />
+    </div>
+  )
 }
 
 /**
@@ -129,18 +211,75 @@ function loadStandFromFile(): void {
 export function BuildTab() {
   const activeTool = useEditor((s) => s.tool)
   const mode = useEditor((s) => s.mode)
+  const [standLoading, setStandLoading] = useState(false)
+  const [standError, setStandError] = useState<string | null>(null)
 
   const isTypeActive = (type: BuildType) =>
     type.mode === 'material-paint'
       ? mode === 'material-paint'
       : mode === 'build' && activeTool === type.kind
 
+  /**
+   * Import a GLB/GLTF from the user's PC: parse in a worker, build the stand
+   * group, cache it, then activate item placement. The editor stays responsive
+   * while large files are being parsed.
+   */
+  const handleLoadStandClick = useCallback(async () => {
+    const file = await pickStandFile()
+    if (!file) return
+
+    setStandLoading(true)
+    setStandError(null)
+    try {
+      const { url, dimensions } = await importStandModel(file)
+      const baseName = file.name.replace(/\.[^.]+$/, '')
+
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90'>
+        <rect width='90' height='90' fill='#1f2937'/>
+        <rect x='15' y='15' width='60' height='60' rx='8' fill='#64748b'/>
+        <text x='45' y='52' text-anchor='middle' font-family='sans-serif' font-size='14' font-weight='700' fill='white'>GLB</text>
+      </svg>`
+      const thumbnail = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+
+      const asset: AssetInput = {
+        id: `import-${Date.now()}-${baseName}`,
+        category: 'furniture',
+        name: baseName,
+        thumbnail,
+        tags: ['import'],
+        src: url,
+        dimensions,
+        offset: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        source: 'mine',
+      }
+
+      const ed = useEditor.getState()
+      ed.setPhase('structure')
+      ed.setStructureLayer('elements')
+      ed.setMode('build')
+      ed.setSelectedItem(asset as never)
+      // catalogCategory намеренно НЕ ставим — ItemCatalog перезапишет selectedItem
+      // на первый элемент категории если увидит незнакомый src
+      ed.setCatalogCategory(null)
+      ed.setTool('item')
+    } catch (error) {
+      console.error('[stand-import]', error)
+      setStandError(
+        'Не удалось загрузить модель. Файл может быть повреждён или имеет неподдерживаемый формат.',
+      )
+    } finally {
+      setStandLoading(false)
+    }
+  }, [])
+
   const handleTypeClick = useCallback((type: BuildType) => {
     if (type.mode === 'material-paint') {
       activatePaintMode()
     } else if (type.mode === 'load-stand') {
       triggerSFX('sfx:menu-click')
-      loadStandFromFile()
+      void handleLoadStandClick()
     } else if (type.id === 'podium') {
       activateQuickPlacement('podium')
     } else if (type.id === 'equipment') {
@@ -150,7 +289,7 @@ export function BuildTab() {
     } else if (type.kind) {
       activateBuildTool(type.kind)
     }
-  }, [])
+  }, [handleLoadStandClick])
 
   const catalogCategory = useEditor((s) => s.catalogCategory)
   const editorMode = useEditor((s) => s.mode)
@@ -193,7 +332,9 @@ export function BuildTab() {
                       active
                         ? 'bg-primary/10 ring-1 ring-primary/50 text-foreground'
                         : 'bg-muted/40 opacity-80 hover:bg-muted hover:opacity-100',
+                      type.mode === 'load-stand' && standLoading && 'cursor-wait opacity-60',
                     )}
+                    disabled={type.mode === 'load-stand' && standLoading}
                     onClick={() => {
                       triggerSFX('sfx:menu-click')
                       handleTypeClick(type)
@@ -201,18 +342,31 @@ export function BuildTab() {
                     onMouseEnter={() => triggerSFX('sfx:menu-hover')}
                     type="button"
                   >
-                    <Icon className="h-5 w-5" />
-                    <span className="leading-none">{type.label}</span>
+                    {type.mode === 'load-stand' && standLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Icon className="h-5 w-5" />
+                    )}
+                    <span className="leading-none">
+                      {type.mode === 'load-stand' && standLoading ? 'Загрузка…' : type.label}
+                    </span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent className="pointer-events-none" side="top">
-                  {type.label}
+                  {type.mode === 'load-stand' && standLoading ? 'Загрузка…' : type.label}
                 </TooltipContent>
               </Tooltip>
             )
           })}
         </div>
       </TooltipProvider>
+
+      {standError && <p className="px-1 text-destructive text-xs">{standError}</p>}
+
+      {/* Загрузка плана — отдельная кнопка, создаёт GuideNode (подложка на полу) */}
+      {editorMode !== 'material-paint' && !(editorTool === 'item' && catalogCategory) && (
+        <LoadPlanButton />
+      )}
 
       {editorMode === 'material-paint' ? (
         <div className="min-h-0 flex-1 overflow-y-auto">

@@ -40,6 +40,7 @@
     "@types/node": "^22.19.12",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "@types/three": "^0.184.1",
     "agentation": "^3.0.2",
     "react-grab": "^0.1.29",
     "react-scan": "^0.5.3",

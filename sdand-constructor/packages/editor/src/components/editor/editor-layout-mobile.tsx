@@ -117,8 +117,16 @@ export function EditorLayoutMobile({
     }
   }, [])
 
-  // Initialise sheet to current tab default once we know the middle height
+  // Мобильный: стартуем свёрнутым (только ручка). didInit=false чтобы
+  // committedSheetH корректно инициализировался в SHEET_HANDLE_PX.
   const didInit = useRef(false)
+  useEffect(() => {
+    if (didInit.current || middleH <= 0) return
+    didInit.current = true
+    // Устанавливаем committedSheetH = SHEET_HANDLE_PX, НЕ открываем автоматически.
+    // BottomSheet уже получает initialHeightPx={SHEET_HANDLE_PX}, поэтому snapTo не нужен.
+    setCommittedSheetH(SHEET_HANDLE_PX)
+  }, [middleH])
   useEffect(() => {
     if (didInit.current || middleH <= 0) return
     didInit.current = true

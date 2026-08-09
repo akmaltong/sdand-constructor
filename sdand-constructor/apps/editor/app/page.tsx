@@ -11,7 +11,7 @@ import {
   useEditor,
   useScene,
 } from '@pascal-app/editor'
-import { ChevronDown, Hammer, Layers, RotateCcw, Settings, Upload, X } from 'lucide-react'
+import { Check, ChevronDown, Hammer, Layers, RotateCcw, Settings, Upload } from 'lucide-react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BuildTab } from '@/components/build-tab'
@@ -262,16 +262,6 @@ export default function Home() {
     <div className="relative h-screen w-screen">
       {selectedVenue && <DefaultVenueSeeder venue={selectedVenue} />}
       <div className="pointer-events-none absolute top-4 right-4 z-40 flex items-center gap-2">
-        {(activeTool || activeMode === 'build' || activeMode === 'material-paint') && (
-          <button
-            className="pointer-events-auto inline-flex touch-manipulation items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60"
-            onClick={handleClearTool}
-            type="button"
-          >
-            <X className="h-3.5 w-3.5" />
-            Отмена
-          </button>
-        )}
         <button
           className="pointer-events-auto inline-flex touch-manipulation items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60"
           onClick={handleReset}
@@ -281,6 +271,18 @@ export default function Home() {
           Reset
         </button>
       </div>
+      {(activeTool || activeMode === 'build' || activeMode === 'material-paint') && (
+        <div className="pointer-events-none absolute right-6 bottom-6 z-40 sm:right-8 sm:bottom-8">
+          <button
+            aria-label="Готово"
+            className="pointer-events-auto inline-flex h-16 w-16 touch-manipulation items-center justify-center rounded-full bg-emerald-500 text-white shadow-2xl transition hover:bg-emerald-600 active:scale-95 sm:h-20 sm:w-20"
+            onClick={handleClearTool}
+            type="button"
+          >
+            <Check className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={3} />
+          </button>
+        </div>
+      )}
       <div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center">
         <div className="pointer-events-auto relative">
           <button

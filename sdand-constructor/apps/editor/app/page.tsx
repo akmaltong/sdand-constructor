@@ -7,6 +7,7 @@ import {
   Editor,
   ItemsPanel,
   saveSceneToLocalStorage,
+  SettingsPanel,
   useEditor,
   useScene,
 } from '@pascal-app/editor'
@@ -175,7 +176,7 @@ const SIDEBAR_TABS = [
   {
     id: 'settings',
     label: 'Настройки',
-    component: () => null,
+    component: SettingsPanel,
     mobileDefaultSnap: 0.5,
     mobileIcon: <Settings className="h-5 w-5" />,
     icon: <Settings className="h-8 w-8" />,

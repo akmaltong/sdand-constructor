@@ -1,26 +1,9 @@
-import { emitter, useScene, validateBuildJson } from '@pascal-app/core'
+import { useScene, validateBuildJson } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
-import { TreeView, VisualJson } from '@visual-json/react'
-import { Camera, Download, Save, Trash2, Upload } from 'lucide-react'
-import {
-  type KeyboardEvent,
-  type SyntheticEvent,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { Save, Trash2, Upload } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { Button } from './../../../../../components/ui/primitives/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from './../../../../../components/ui/primitives/dialog'
-import { Switch } from './../../../../../components/ui/primitives/switch'
 import useEditor, { selectDefaultBuildingAndLevel } from './../../../../../store/use-editor'
-import { AudioSettingsDialog } from './audio-settings-dialog'
-import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog'
 import { LoadBuildDialog, type PendingImport } from './load-build-dialog'
 
 type SceneNode = Record<string, unknown> & {
@@ -171,39 +154,15 @@ export interface SettingsPanelProps {
   ) => Promise<void>
 }
 
-export function SettingsPanel({
-  projectId,
-  projectVisibility,
-  onVisibilityChange,
-}: SettingsPanelProps = {}) {
+export function SettingsPanel(_props: SettingsPanelProps = {}) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const nodes = useScene((state) => state.nodes)
   const rootNodeIds = useScene((state) => state.rootNodeIds)
   const setScene = useScene((state) => state.setScene)
   const clearScene = useScene((state) => state.clearScene)
   const resetSelection = useViewer((state) => state.resetSelection)
-  const exportScene = useViewer((state) => state.exportScene)
-  const showGrid = useViewer((state) => state.showGrid)
-  const shadows = useViewer((state) => state.shadows)
   const setPhase = useEditor((state) => state.setPhase)
-  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
-  const sceneGraphValue = useMemo(
-    () => buildSceneGraphValue(nodes as Record<string, SceneNode>, rootNodeIds),
-    [nodes, rootNodeIds],
-  )
-  const blockSceneGraphMutations = useCallback((event: SyntheticEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
-  }, [])
-  const blockSceneGraphDeletion = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Delete' || event.key === 'Backspace') {
-      event.preventDefault()
-      event.stopPropagation()
-    }
-  }, [])
-
-  const isLocalProject = false // Props-based; only show cloud sections when projectId provided
 
   const handleSaveBuild = () => {
     const sceneData = { nodes, rootNodeIds }
@@ -281,129 +240,14 @@ export function SettingsPanel({
     selectDefaultBuildingAndLevel()
   }
 
-  const handleGenerateThumbnail = () => {
-    if (!projectId) return
-    setIsGeneratingThumbnail(true)
-    emitter.emit('camera-controls:generate-thumbnail', { projectId })
-    setTimeout(() => setIsGeneratingThumbnail(false), 3000)
-  }
-
-  const handleVisibilityChange = async (
-    field: 'isPrivate' | 'showScansPublic' | 'showGuidesPublic',
-    value: boolean,
-  ) => {
-    await onVisibilityChange?.(field, value)
-  }
-
+  // Sdand: сокращено до Сохранения/Загрузки + Очистки. Экспорт GLB/STL/OBJ,
+  // звук, горячие клавиши, граф сцены, thumbnail и visibility скрыты.
   return (
     <div className="flex flex-col gap-6 p-3">
-      {/* Visibility Section (only for cloud projects) */}
-      {projectId && !isLocalProject && (
-        <div className="space-y-3">
-          <label className="font-medium text-muted-foreground text-xs uppercase">Visibility</label>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-medium text-sm">Public</div>
-              <div className="text-muted-foreground text-xs">
-                {projectVisibility?.isPrivate ? 'Only you' : 'Anyone'} can view
-              </div>
-            </div>
-            <Switch
-              checked={!(projectVisibility?.isPrivate ?? false)}
-              onCheckedChange={(checked) => handleVisibilityChange('isPrivate', !checked)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-medium text-sm">Show 3D Scans</div>
-              <div className="text-muted-foreground text-xs">Visible to public viewers</div>
-            </div>
-            <Switch
-              checked={projectVisibility?.showScansPublic ?? true}
-              onCheckedChange={(checked) => handleVisibilityChange('showScansPublic', checked)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-medium text-sm">Show Floorplans</div>
-              <div className="text-muted-foreground text-xs">Visible to public viewers</div>
-            </div>
-            <Switch
-              checked={projectVisibility?.showGuidesPublic ?? true}
-              onCheckedChange={(checked) => handleVisibilityChange('showGuidesPublic', checked)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-medium text-sm">Show Grid</div>
-              <div className="text-muted-foreground text-xs">Visible only in the editor</div>
-            </div>
-            <Switch
-              checked={showGrid}
-              onCheckedChange={(checked) => useViewer.getState().setShowGrid(checked)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-medium text-sm">Shadows</div>
-              <div className="text-muted-foreground text-xs">Cast shadows from lights</div>
-            </div>
-            <Switch
-              checked={shadows}
-              onCheckedChange={(checked) => useViewer.getState().setShadows(checked)}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Export Section */}
       <div className="space-y-2">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Экспорт</label>
-        <Button
-          className="w-full justify-start gap-2"
-          onClick={() => exportScene?.('glb')}
-          variant="outline"
-        >
-          <Download className="size-4" />
-          Экспорт GLB
-        </Button>
-        <Button
-          className="w-full justify-start gap-2"
-          onClick={() => exportScene?.('stl')}
-          variant="outline"
-        >
-          <Download className="size-4" />
-          Экспорт STL
-        </Button>
-        <Button
-          className="w-full justify-start gap-2"
-          onClick={() => exportScene?.('obj')}
-          variant="outline"
-        >
-          <Download className="size-4" />
-          Экспорт OBJ
-        </Button>
-      </div>
-
-      {/* Thumbnail Section (only for cloud projects) */}
-      {projectId && !isLocalProject && (
-        <div className="space-y-2">
-          <label className="font-medium text-muted-foreground text-xs uppercase">Thumbnail</label>
-          <Button
-            className="w-full justify-start gap-2"
-            disabled={isGeneratingThumbnail}
-            onClick={handleGenerateThumbnail}
-            variant="outline"
-          >
-            <Camera className="size-4" />
-            {isGeneratingThumbnail ? 'Generating...' : 'Generate Thumbnail'}
-          </Button>
-        </div>
-      )}
-
-      {/* Save/Load Section */}
-      <div className="space-y-2">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Сохранение и загрузка</label>
+        <label className="font-medium text-muted-foreground text-xs uppercase">
+          Сохранение и загрузка
+        </label>
 
         <Button className="w-full justify-start gap-2" onClick={handleSaveBuild} variant="outline">
           <Save className="size-4" />
@@ -434,45 +278,6 @@ export function SettingsPanel({
         />
       </div>
 
-      {/* Audio Section */}
-      <div className="space-y-2">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Звук</label>
-        <AudioSettingsDialog />
-      </div>
-
-      {/* Keyboard Section */}
-      <div className="space-y-2">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Горячие клавиши</label>
-        <KeyboardShortcutsDialog />
-      </div>
-
-      {/* Scene Graph */}
-      <div className="space-y-1">
-        <label className="font-medium text-muted-foreground text-xs uppercase">Граф сцены</label>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="h-auto justify-start p-0 text-sm" variant="link">
-              Исследовать граф сцены
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="h-[80vh] max-w-[95vw] gap-0 overflow-hidden border-0 bg-[#1e1e1e] p-0 shadow-none sm:max-w-5xl">
-            <DialogTitle className="sr-only">Scene Graph</DialogTitle>
-            <div
-              className="flex h-full min-h-0 w-full min-w-0 *:h-full *:w-full *:overflow-y-auto"
-              onContextMenuCapture={blockSceneGraphMutations}
-              onDragStartCapture={blockSceneGraphMutations}
-              onDropCapture={blockSceneGraphMutations}
-              onKeyDownCapture={blockSceneGraphDeletion}
-            >
-              <VisualJson value={sceneGraphValue}>
-                <TreeView showCounts />
-              </VisualJson>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Danger Zone */}
       <div className="space-y-2">
         <label className="font-medium text-destructive text-xs uppercase">Опасная зона</label>
 

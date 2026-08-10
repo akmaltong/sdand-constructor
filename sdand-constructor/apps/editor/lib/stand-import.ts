@@ -79,18 +79,23 @@ const buildStandMesh = (entry: StandMeshEntry): THREE.Mesh => {
   // Imported stands are huge — the editor's per-mesh BVH pass must skip them.
   geometry.userData.skipBvh = true
 
-  const material = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(entry.color[0], entry.color[1], entry.color[2]),
-    metalness: entry.metalness,
-    roughness: entry.roughness,
-    emissive: new THREE.Color(entry.emissive[0], entry.emissive[1], entry.emissive[2]),
-    emissiveIntensity: entry.emissiveIntensity,
-    transparent: entry.transparent,
-    opacity: entry.opacity,
-    side: entry.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
-    wireframe: entry.wireframe,
-  })
-  material.name = entry.name || 'stand-material'
+  const materialKey = `${entry.color.join('_')}_${entry.metalness}_${entry.roughness}_${entry.emissive.join('_')}_${entry.emissiveIntensity}_${entry.opacity}_${entry.transparent}_${entry.doubleSided}_${entry.wireframe}`
+  let material = materialCache.get(materialKey)
+  if (!material) {
+    material = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(entry.color[0], entry.color[1], entry.color[2]),
+      metalness: entry.metalness,
+      roughness: entry.roughness,
+      emissive: new THREE.Color(entry.emissive[0], entry.emissive[1], entry.emissive[2]),
+      emissiveIntensity: entry.emissiveIntensity,
+      transparent: entry.transparent,
+      opacity: entry.opacity,
+      side: entry.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
+      wireframe: entry.wireframe,
+    })
+    material.name = entry.name || 'stand-material'
+    materialCache.set(materialKey, material)
+  }
 
   const mesh = new THREE.Mesh(geometry, material)
   mesh.name = entry.name
@@ -100,8 +105,12 @@ const buildStandMesh = (entry: StandMeshEntry): THREE.Mesh => {
   mesh.castShadow = true
   mesh.receiveShadow = true
   mesh.userData.skipBvh = true
+  // Disable per-submesh raycasting: placement tool uses top-level asset bounds
+  mesh.raycast = () => {}
   return mesh
 }
+
+const materialCache = new Map<string, THREE.MeshStandardMaterial>()
 
 const round = (value: number, precision = 2): number => {
   const factor = 10 ** precision

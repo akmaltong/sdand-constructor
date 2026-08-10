@@ -5,8 +5,9 @@
  * when a user imports a large stand model.
  */
 import './stand-parse.worker.polyfill'
-import { Box3, Color, DoubleSide, Quaternion, Vector3 } from 'three'
+import { Box3, Color, DoubleSide, Matrix3, Quaternion, Vector2, Vector3 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import type {
   BufferAttribute,
@@ -15,6 +16,7 @@ import type {
   Material,
   Mesh,
   Object3D,
+  Texture,
 } from 'three'
 
 export type StandMeshEntry = {
@@ -62,25 +64,6 @@ const ctx = (typeof self !== 'undefined' ? self : globalThis) as unknown as {
   onmessage: ((event: MessageEvent<StandParseRequest>) => void) | null
 }
 
-const attrToFloat = (
-  attr: BufferAttribute | InterleavedBufferAttribute,
-): Float32Array => {
-  // Interleaved attributes share one backing array with every other
-  // attribute — copying it wholesale would pull in foreign components.
-  if ((attr as InterleavedBufferAttribute).isInterleavedBufferAttribute) {
-    const count = attr.count
-    const itemSize = attr.itemSize
-    const out = new Float32Array(count * itemSize)
-    for (let i = 0; i < count; i++) {
-      for (let k = 0; k < itemSize; k++) {
-        out[i * itemSize + k] = attr.getComponent(i, k)
-      }
-    }
-    return out
-  }
-  return new Float32Array(attr.array as Float32Array)
-}
-
 type MaterialInfo = {
   color: Color
   emissive: Color | undefined
@@ -91,6 +74,62 @@ type MaterialInfo = {
   transparent: boolean
   doubleSided: boolean
   wireframe: boolean
+}
+
+/**
+ * Sample the average colour from a Texture by drawing it to an OffscreenCanvas
+ * and reading the pixel data. Falls back to `fallback` if the texture
+ * isn't ready or unreadable.
+ */
+const sampleTextureColor = (texture: Texture | null, fallback: Color): Color => {
+  if (!texture || !texture.image) return fallback
+
+  const img = texture.image as ImageBitmap | OffscreenCanvas | HTMLCanvasElement
+  const width = img.width ?? (img as ImageBitmap).width
+  const height = img.height ?? (img as ImageBitmap).height
+
+  if (!width || !height) return fallback
+
+  try {
+    const offscreen = new OffscreenCanvas(width, height)
+    const c2d = offscreen.getContext('2d')
+    if (!c2d) return fallback
+
+    c2d.drawImage(img as CanvasImageSource, 0, 0, width, height)
+    const imageData = c2d.getImageData(0, 0, width, height)
+    let r = 0, g = 0, b = 0
+    const len = imageData.data.length
+    for (let i = 0; i < len; i += 4) {
+      r += imageData.data[i] ?? 0
+      g += imageData.data[i + 1] ?? 0
+      b += imageData.data[i + 2] ?? 0
+    }
+    const count = len / 4
+    return new Color(r / count / 255, g / count / 255, b / count / 255)
+  } catch {
+    return fallback
+  }
+}
+
+/** Wait until all textures in the GLTF result have loaded their image data. */
+const waitForTextures = (textures: Texture[]): Promise<void> => {
+  const pending = textures.filter((t) => !t.image)
+  if (pending.length === 0) return Promise.resolve()
+
+  return Promise.all(
+    pending.map(
+      (t) =>
+        new Promise<void>((resolve) => {
+          const onReady = () => {
+            t.removeEventListener('dispose', onReady)
+            resolve()
+          }
+          t.addEventListener('dispose', onReady)
+          // Fallback timeout: if texture never updates, resolve anyway
+          setTimeout(resolve, 3000)
+        }),
+    ),
+  ).then(() => {})
 }
 
 const readMaterial = (material: Material | Material[]): MaterialInfo => {
@@ -104,9 +143,15 @@ const readMaterial = (material: Material | Material[]): MaterialInfo => {
     opacity?: number
     transparent?: boolean
     wireframe?: boolean
+    map?: Texture | null
   }
+
+  const baseColor = props.color ?? new Color(1, 1, 1)
+  // If the material has an albedo (map) texture, sample its average color
+  const color = props.map ? sampleTextureColor(props.map, baseColor) : baseColor
+
   return {
-    color: props.color ?? new Color(1, 1, 1),
+    color,
     emissive: props.emissive,
     emissiveIntensity: props.emissiveIntensity ?? 0,
     metalness: props.metalness ?? 0,
@@ -118,63 +163,20 @@ const readMaterial = (material: Material | Material[]): MaterialInfo => {
   }
 }
 
-const position = new Vector3()
-const quaternion = new Quaternion()
-const scale = new Vector3()
-const box = new Box3()
-
-const extractMesh = (mesh: Mesh, out: StandMeshAtlas): StandMeshEntry | null => {
-  const geometry = mesh.geometry as BufferGeometry
-  const posAttr = geometry.getAttribute('position')
-  if (!posAttr || posAttr.count < 3) return null
-
-  if (!geometry.getAttribute('normal')) {
-    geometry.computeVertexNormals()
-  }
-
-  const index = geometry.getIndex()
-  const normalAttr = geometry.getAttribute('normal')
-  const uvAttr = geometry.getAttribute('uv')
-  const positionAttr = attrToFloat(posAttr)
-
-  geometry.computeBoundingBox()
-  if (!geometry.boundingBox) return null
-
-  mesh.updateWorldMatrix(true, true)
-  mesh.getWorldPosition(position)
-  mesh.getWorldQuaternion(quaternion)
-  mesh.getWorldScale(scale)
-
-  box.copy(geometry.boundingBox).applyMatrix4(mesh.matrixWorld)
-  out.min[0] = Math.min(out.min[0], box.min.x)
-  out.min[1] = Math.min(out.min[1], box.min.y)
-  out.min[2] = Math.min(out.min[2], box.min.z)
-  out.max[0] = Math.max(out.max[0], box.max.x)
-  out.max[1] = Math.max(out.max[1], box.max.y)
-  out.max[2] = Math.max(out.max[2], box.max.z)
-
-  const info = readMaterial(mesh.material)
-
-  return {
-    name: mesh.name || 'part',
-    position: [position.x, position.y, position.z],
-    quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
-    scale: [scale.x, scale.y, scale.z],
-    color: [info.color.r, info.color.g, info.color.b],
-    metalness: info.metalness,
-    roughness: info.roughness,
-    emissive: [info.emissive?.r ?? 0, info.emissive?.g ?? 0, info.emissive?.b ?? 0],
-    emissiveIntensity: info.emissiveIntensity,
-    opacity: info.opacity,
-    transparent: info.transparent,
-    doubleSided: info.doubleSided,
-    wireframe: info.wireframe,
-    index: index ? new Uint32Array(index.array) : null,
-    positionAttr,
-    normalAttr: normalAttr ? attrToFloat(normalAttr) : null,
-    uvAttr: uvAttr ? attrToFloat(uvAttr) : null,
-  }
+type MaterialBucket = {
+  info: MaterialInfo
+  positions: number[]
+  normals: number[]
+  uvs: number[]
+  indices: number[]
+  hasNormals: boolean
+  hasUvs: boolean
+  vertexCount: number
 }
+
+const tempVec3 = new Vector3()
+const tempNormalVec3 = new Vector3()
+const normalMatrix = new Matrix3()
 
 export const collectAtlas = (root: Object3D): StandMeshAtlas => {
   const atlas: StandMeshAtlas = {
@@ -186,21 +188,125 @@ export const collectAtlas = (root: Object3D): StandMeshAtlas => {
     max: [-Infinity, -Infinity, -Infinity],
   }
 
+  // Group sub-meshes by material property key to merge geometries into few draw calls
+  const buckets = new Map<string, MaterialBucket>()
+
   const visit = (object: Object3D): void => {
     if ((object as Mesh).isMesh) {
-      const entry = extractMesh(object as Mesh, atlas)
-      if (entry) {
-        atlas.meshes.push(entry)
-        atlas.meshCount += 1
-        atlas.vertexCount += entry.positionAttr.length / 3
+      const mesh = object as Mesh
+      const geometry = mesh.geometry as BufferGeometry
+      const posAttr = geometry.getAttribute('position')
+      if (posAttr && posAttr.count >= 3) {
+        if (!geometry.getAttribute('normal')) {
+          geometry.computeVertexNormals()
+        }
+
+        mesh.updateWorldMatrix(true, true)
+        normalMatrix.getNormalMatrix(mesh.matrixWorld)
+
+        const normalAttr = geometry.getAttribute('normal')
+        const uvAttr = geometry.getAttribute('uv')
+        const indexAttr = geometry.getIndex()
+
+        const info = readMaterial(mesh.material)
+        const matKey = `${info.color.getHexString()}_${info.metalness}_${info.roughness}_${info.emissive?.getHexString() ?? '000000'}_${info.emissiveIntensity}_${info.opacity}_${info.transparent}_${info.doubleSided}_${info.wireframe}`
+
+        let bucket = buckets.get(matKey)
+        if (!bucket) {
+          bucket = {
+            info,
+            positions: [],
+            normals: [],
+            uvs: [],
+            indices: [],
+            hasNormals: Boolean(normalAttr),
+            hasUvs: Boolean(uvAttr),
+            vertexCount: 0,
+          }
+          buckets.set(matKey, bucket)
+        }
+
+        const baseIndex = bucket.vertexCount
+        const vCount = posAttr.count
+
+        for (let i = 0; i < vCount; i++) {
+          // Transform local vertex position to world space
+          tempVec3.set(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)).applyMatrix4(mesh.matrixWorld)
+          bucket.positions.push(tempVec3.x, tempVec3.y, tempVec3.z)
+
+          atlas.min[0] = Math.min(atlas.min[0], tempVec3.x)
+          atlas.min[1] = Math.min(atlas.min[1], tempVec3.y)
+          atlas.min[2] = Math.min(atlas.min[2], tempVec3.z)
+          atlas.max[0] = Math.max(atlas.max[0], tempVec3.x)
+          atlas.max[1] = Math.max(atlas.max[1], tempVec3.y)
+          atlas.max[2] = Math.max(atlas.max[2], tempVec3.z)
+
+          // Transform normal to world space
+          if (normalAttr) {
+            tempNormalVec3.set(normalAttr.getX(i), normalAttr.getY(i), normalAttr.getZ(i)).applyMatrix3(normalMatrix).normalize()
+            bucket.normals.push(tempNormalVec3.x, tempNormalVec3.y, tempNormalVec3.z)
+          } else {
+            bucket.normals.push(0, 1, 0)
+          }
+
+          if (uvAttr) {
+            bucket.uvs.push(uvAttr.getX(i), uvAttr.getY(i))
+          } else if (bucket.hasUvs) {
+            bucket.uvs.push(0, 0)
+          }
+        }
+
+        if (indexAttr) {
+          for (let j = 0; j < indexAttr.count; j++) {
+            bucket.indices.push(indexAttr.getX(j) + baseIndex)
+          }
+        } else {
+          for (let j = 0; j < vCount; j++) {
+            bucket.indices.push(j + baseIndex)
+          }
+        }
+
+        bucket.vertexCount += vCount
       }
     }
+
     for (const child of object.children) {
       visit(child)
     }
   }
 
   visit(root)
+
+  // Construct consolidated GPU-ready mesh entries from buckets
+  let groupIdx = 0
+  for (const bucket of buckets.values()) {
+    if (bucket.vertexCount === 0) continue
+
+    const entry: StandMeshEntry = {
+      name: `stand-part-${++groupIdx}`,
+      position: [0, 0, 0],
+      quaternion: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+      color: [bucket.info.color.r, bucket.info.color.g, bucket.info.color.b],
+      metalness: bucket.info.metalness,
+      roughness: bucket.info.roughness,
+      emissive: [bucket.info.emissive?.r ?? 0, bucket.info.emissive?.g ?? 0, bucket.info.emissive?.b ?? 0],
+      emissiveIntensity: bucket.info.emissiveIntensity,
+      opacity: bucket.info.opacity,
+      transparent: bucket.info.transparent,
+      doubleSided: bucket.info.doubleSided,
+      wireframe: bucket.info.wireframe,
+      index: new Uint32Array(bucket.indices),
+      positionAttr: new Float32Array(bucket.positions),
+      normalAttr: bucket.normals.length > 0 ? new Float32Array(bucket.normals) : null,
+      uvAttr: bucket.uvs.length > 0 ? new Float32Array(bucket.uvs) : null,
+    }
+
+    atlas.meshes.push(entry)
+    atlas.meshCount += 1
+    atlas.vertexCount += bucket.vertexCount
+  }
+
   return atlas
 }
 
@@ -217,6 +323,7 @@ ctx.onmessage = (event: MessageEvent<StandParseRequest>) => {
 
   try {
     const loader = new GLTFLoader()
+    loader.setDRACOLoader(new DRACOLoader())
     loader.setMeshoptDecoder(MeshoptDecoder)
     loader.parse(
       buffer,

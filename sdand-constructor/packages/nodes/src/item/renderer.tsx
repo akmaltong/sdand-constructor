@@ -375,6 +375,32 @@ const StandModelRenderer = ({ node, scene }: { node: ItemNode; scene: Group }) =
 
   const handlers = useNodeEvents(node, 'item')
 
+  // Sdand: draft-нода (placement preview, тянется за курсором) — рисуем
+  // лёгкий bbox-куб вместо scene.clone(true) на всей иерархии импортированной
+  // модели, иначе main thread замирает на 48 MB стенде и «зависает». Реальный
+  // Clone делаем только после placement (isTransient снят).
+  const isTransient = Boolean(
+    (node.metadata as { isTransient?: unknown } | undefined)?.isTransient,
+  )
+  const [w, h, d] = getScaledDimensions(node)
+  const shading = useViewer((s) => s.shading)
+  const draftMaterial = useMemo(
+    () => createDefaultMaterial('#94a3b8', 0.55, shading),
+    [shading],
+  )
+
+  const clonedScene = useMemo(() => {
+    if (isTransient) return null
+    const cloned = scene.clone(true)
+    cloned.traverse((child) => {
+      if ((child as Mesh).isMesh) {
+        child.raycast = () => {}
+      }
+    })
+    return cloned
+  }, [scene, isTransient])
+  const calculatedScale = multiplyScales(node.asset.scale || [1, 1, 1], node.scale || [1, 1, 1])
+
   useEffect(() => {
     if (!node.parentId) return
     useScene.getState().markDirty(node.parentId as AnyNodeId)
@@ -391,17 +417,23 @@ const StandModelRenderer = ({ node, scene }: { node: ItemNode; scene: Group }) =
   const lightEffects =
     interactive?.effects.filter((e): e is LightEffect => e.kind === 'light') ?? []
 
-  // The cached scene is shared by every clone of the same asset — Clone shares
-  // geometry/material references, so duplicating an imported stand is cheap.
+  if (isTransient || !clonedScene) {
+    return (
+      <mesh castShadow position-y={h / 2} receiveShadow {...handlers}>
+        <boxGeometry args={[w, h, d]} />
+        <primitive attach="material" object={draftMaterial} />
+      </mesh>
+    )
+  }
+
   return (
     <>
-      <Clone
-        dispose={null}
-        object={scene}
+      <primitive
+        object={clonedScene}
         position={node.asset.offset}
         ref={ref}
         rotation={node.asset.rotation}
-        scale={multiplyScales(node.asset.scale || [1, 1, 1], node.scale || [1, 1, 1])}
+        scale={calculatedScale}
         {...handlers}
       />
       {lightEffects.map((effect, i) => (

@@ -189,7 +189,8 @@ export function EditorLayoutMobile({
   const panelPenetrationInMiddle = Math.max(0, panelSheetHeight - middleBottomFromViewport)
   // The effective "sheet height" that the viewer sits above is the larger of
   // the primary sidebar sheet and the secondary panel sheet's penetration.
-  const effectiveSheetH = Math.max(committedSheetH, panelPenetrationInMiddle)
+  // Sdand: при isCollapsed sheet unmount-нут — viewer должен занимать всё middleH.
+  const effectiveSheetH = isCollapsed ? 0 : Math.max(committedSheetH, panelPenetrationInMiddle)
 
   // In capture mode the sheet and tab bar are hidden — the viewer should fill
   // the entire middle area regardless of the stored sheet height.

@@ -56,11 +56,24 @@ const ctx = (typeof self !== 'undefined' ? self : globalThis) as unknown as {
   onmessage: ((event: MessageEvent<StandParseRequest>) => void) | null
 }
 
+const hasReadyBitmap = (texture: Texture): boolean => {
+  const img = texture.image as
+    | ImageBitmap
+    | { _bitmap?: ImageBitmap; bitmap?: ImageBitmap; naturalWidth?: number }
+    | null
+    | undefined
+  if (!img) return false
+  if ((img as ImageBitmap).width && (img as ImageBitmap).close) return true
+  const w = (img as { _bitmap?: ImageBitmap; bitmap?: ImageBitmap })._bitmap
+    ?? (img as { _bitmap?: ImageBitmap; bitmap?: ImageBitmap }).bitmap
+  return !!w
+}
+
 const waitForTextures = async (textures: Texture[]): Promise<void> => {
-  const deadline = performance.now() + 8000
+  const deadline = performance.now() + 15000
   while (performance.now() < deadline) {
-    if (textures.every((t) => !!t.image)) return
-    await new Promise<void>((resolve) => setTimeout(resolve, 50))
+    if (textures.every(hasReadyBitmap)) return
+    await new Promise<void>((resolve) => setTimeout(resolve, 80))
   }
 }
 

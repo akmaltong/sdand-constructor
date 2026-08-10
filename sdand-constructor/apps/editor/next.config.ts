@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // Standalone build — самодостаточная папка .next/standalone,
+  // запуск: node server.js (нужен только Node 20+).
+  output: 'standalone',
   // Sdand: скрываем "N" dev-indicator внизу-слева — на демо заказчику
   // это выглядит неаккуратно.
   devIndicators: false,

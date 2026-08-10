@@ -2,9 +2,9 @@
 
 import { setStandModel } from '@pascal-app/nodes'
 import * as THREE from 'three'
-import type { StandMaterialData, StandMeshAtlas, StandMeshEntry } from './stand-parse.worker'
-
-type WorkerResponse = { id: number; ok: true; atlas: StandMeshAtlas } | { id: number; ok: false; error: string }
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 
 export type StandImportResult = {
   url: string
@@ -12,121 +12,86 @@ export type StandImportResult = {
   group: THREE.Group
 }
 
-let worker: Worker | null = null
-let nextRequestId = 0
-const pending = new Map<number, { resolve: (atlas: StandMeshAtlas) => void; reject: (error: Error) => void }>()
-
-const getWorker = (): Worker => {
-  if (!worker) {
-    worker = new Worker(new URL('./stand-parse.worker', import.meta.url), { type: 'module' })
-    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-      const request = pending.get(event.data.id)
-      if (!request) return
-      pending.delete(event.data.id)
-      if (event.data.ok) request.resolve(event.data.atlas)
-      else request.reject(new Error(event.data.error))
-    }
-    worker.onerror = (event) => {
-      for (const request of pending.values()) request.reject(new Error(event.message || 'Worker failed'))
-      pending.clear()
-    }
+let loader: GLTFLoader | null = null
+const getLoader = (): GLTFLoader => {
+  if (!loader) {
+    loader = new GLTFLoader()
+    const draco = new DRACOLoader()
+    draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/')
+    loader.setDRACOLoader(draco)
+    loader.setMeshoptDecoder(MeshoptDecoder)
   }
-  return worker
+  return loader
 }
 
-const parseStandFile = (buffer: ArrayBuffer, url: string): Promise<StandMeshAtlas> =>
+// GLTFLoader.parse timeouts после N секунд если DRACO/Meshopt wasm не пришёл.
+const parseWithTimeout = (buffer: ArrayBuffer, url: string, timeoutMs = 60000): Promise<THREE.Group> =>
   new Promise((resolve, reject) => {
-    const id = ++nextRequestId
-    pending.set(id, { resolve, reject })
-    getWorker().postMessage({ id, buffer, url }, [buffer])
+    let done = false
+    const timer = setTimeout(() => {
+      if (done) return
+      done = true
+      reject(new Error(`Парсинг GLB превысил ${timeoutMs / 1000}s (DRACO wasm недоступен?)`))
+    }, timeoutMs)
+
+    getLoader().parse(
+      buffer,
+      url,
+      (gltf) => {
+        if (done) return
+        done = true
+        clearTimeout(timer)
+        resolve(gltf.scene)
+      },
+      (error) => {
+        if (done) return
+        done = true
+        clearTimeout(timer)
+        reject(error instanceof Error ? error : new Error(String(error)))
+      },
+    )
   })
-
-const buildMaterial = (data: StandMaterialData): THREE.MeshStandardMaterial => {
-  let map: THREE.Texture | null = null
-  if (data.mapBitmap) {
-    map = new THREE.CanvasTexture(data.mapBitmap)
-    map.colorSpace = THREE.SRGBColorSpace
-    map.wrapS = THREE.RepeatWrapping
-    map.wrapT = THREE.RepeatWrapping
-    map.flipY = false
-    map.needsUpdate = true
-  }
-  return new THREE.MeshStandardMaterial({
-    color: new THREE.Color(data.color[0], data.color[1], data.color[2]),
-    metalness: data.metalness,
-    roughness: data.roughness,
-    emissive: new THREE.Color(data.emissive[0], data.emissive[1], data.emissive[2]),
-    emissiveIntensity: data.emissiveIntensity,
-    opacity: data.opacity,
-    transparent: data.transparent,
-    side: data.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
-    wireframe: data.wireframe,
-    map,
-  })
-}
-
-const buildStandMesh = (entry: StandMeshEntry, material: THREE.Material): THREE.Mesh => {
-  const geometry = new THREE.BufferGeometry()
-  if (entry.index) geometry.setIndex(new THREE.BufferAttribute(entry.index, 1))
-  geometry.setAttribute('position', new THREE.BufferAttribute(entry.positionAttr, 3))
-  if (entry.normalAttr) geometry.setAttribute('normal', new THREE.BufferAttribute(entry.normalAttr, 3))
-  if (entry.uvAttr) geometry.setAttribute('uv', new THREE.BufferAttribute(entry.uvAttr, 2))
-  geometry.computeBoundingSphere()
-  geometry.computeBoundingBox()
-  geometry.userData.skipBvh = true
-
-  const mesh = new THREE.Mesh(geometry, material)
-  mesh.castShadow = true
-  mesh.receiveShadow = true
-  mesh.userData.skipBvh = true
-  mesh.raycast = () => {}
-  return mesh
-}
-
-// Chunked mesh construction — main thread yields via rAF каждые CHUNK меш.
-const CHUNK = 200
-const buildStandGroupAsync = async (atlas: StandMeshAtlas): Promise<THREE.Group> => {
-  const group = new THREE.Group()
-  group.name = 'stand-import'
-  group.userData.isStandImport = true
-
-  const materials = atlas.materials.map(buildMaterial)
-
-  for (let i = 0; i < atlas.meshes.length; i += CHUNK) {
-    const end = Math.min(i + CHUNK, atlas.meshes.length)
-    for (let j = i; j < end; j++) {
-      const entry = atlas.meshes[j]!
-      const material = materials[entry.materialIndex] ?? materials[0]!
-      group.add(buildStandMesh(entry, material))
-    }
-    if (end < atlas.meshes.length) {
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-    }
-  }
-
-  group.updateMatrixWorld(true)
-  return group
-}
 
 const round = (value: number, precision = 2): number => {
   const factor = 10 ** precision
   return Math.round(value * factor) / factor
 }
 
+const prepareGroup = (scene: THREE.Group): void => {
+  scene.name = 'stand-import'
+  scene.userData.isStandImport = true
+  scene.traverse((obj) => {
+    const mesh = obj as THREE.Mesh
+    if (!mesh.isMesh) return
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    if (mesh.geometry) mesh.geometry.userData.skipBvh = true
+    mesh.userData.skipBvh = true
+    mesh.raycast = () => {}
+  })
+}
+
+/**
+ * Parse GLB на main thread (как useGLTF для каталога) — сохраняются реальные
+ * материалы и текстуры. Yield-им до/после parse чтобы UI успел отрисовать
+ * loading-состояние.
+ */
 export async function importStandModel(file: File): Promise<StandImportResult> {
   const url = URL.createObjectURL(file)
   try {
     const buffer = await file.arrayBuffer()
-    const atlas = await parseStandFile(buffer, url)
-    const group = await buildStandGroupAsync(atlas)
-    setStandModel(url, group)
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    const scene = await parseWithTimeout(buffer, url)
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    prepareGroup(scene)
 
-    const dimensions: [number, number, number] = [
-      round(atlas.max[0] - atlas.min[0]),
-      round(atlas.max[1] - atlas.min[1]),
-      round(atlas.max[2] - atlas.min[2]),
-    ]
-    return { url, dimensions, group }
+    const box = new THREE.Box3().setFromObject(scene)
+    const size = new THREE.Vector3()
+    box.getSize(size)
+    const dimensions: [number, number, number] = [round(size.x), round(size.y), round(size.z)]
+
+    setStandModel(url, scene)
+    return { url, dimensions, group: scene }
   } catch (error) {
     URL.revokeObjectURL(url)
     throw error

@@ -146,7 +146,7 @@ const SIDEBAR_TABS = [
     id: 'build',
     label: 'Стройка',
     component: BuildTab,
-    mobileDefaultSnap: 0.5,
+    mobileDefaultSnap: 0,
     mobileIcon: <Hammer className="h-5 w-5" />,
     icon: (
       <Image
@@ -162,7 +162,7 @@ const SIDEBAR_TABS = [
     id: 'settings',
     label: 'Настройки',
     component: SettingsPanel,
-    mobileDefaultSnap: 0.5,
+    mobileDefaultSnap: 0,
     mobileIcon: <Settings className="h-5 w-5" />,
     icon: <Settings className="h-8 w-8" />,
   },
@@ -270,24 +270,25 @@ export default function Home() {
       }}
     >
       {selectedVenue && <DefaultVenueSeeder venue={selectedVenue} />}
-      <div className="pointer-events-none absolute top-4 right-4 z-40 flex items-center gap-2">
+      <div className="pointer-events-none absolute top-2 right-2 z-40 flex items-center gap-1 sm:top-4 sm:right-4 sm:gap-2">
         <button
           aria-label="Отменить"
-          className="pointer-events-auto inline-flex touch-manipulation items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60 disabled:cursor-not-allowed disabled:opacity-40"
+          className="pointer-events-auto inline-flex h-8 min-w-8 touch-manipulation items-center justify-center gap-1 rounded-md border border-border bg-background/90 px-2 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60 disabled:cursor-not-allowed disabled:opacity-40 sm:h-auto sm:px-3 sm:py-1.5"
           disabled={!canUndo}
           onClick={handleUndo}
           type="button"
         >
           <Undo2 className="h-3.5 w-3.5" />
-          Undo
+          <span className="hidden sm:inline">Undo</span>
         </button>
         <button
-          className="pointer-events-auto inline-flex touch-manipulation items-center gap-1 rounded-md border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60"
+          aria-label="Сбросить"
+          className="pointer-events-auto inline-flex h-8 min-w-8 touch-manipulation items-center justify-center gap-1 rounded-md border border-border bg-background/90 px-2 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60 sm:h-auto sm:px-3 sm:py-1.5"
           onClick={handleReset}
           type="button"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          Reset
+          <span className="hidden sm:inline">Reset</span>
         </button>
       </div>
       {(activeTool || activeMode === 'build' || activeMode === 'material-paint') && (
@@ -302,15 +303,15 @@ export default function Home() {
           </button>
         </div>
       )}
-      <div className="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center">
+      <div className="pointer-events-none absolute inset-x-0 top-2 z-40 flex justify-center sm:top-3">
         <div className="pointer-events-auto relative">
           <button
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/90 px-3 py-1.5 font-medium text-xs shadow-sm backdrop-blur transition hover:bg-accent/40"
+            className="inline-flex h-8 touch-manipulation items-center gap-1 rounded-full border border-border bg-background/90 px-2.5 font-medium text-xs shadow-sm backdrop-blur transition hover:bg-accent/40 sm:h-auto sm:gap-1.5 sm:px-3 sm:py-1.5"
             onClick={() => setVenueDropdownOpen((v) => !v)}
             type="button"
           >
-            <span className="text-muted-foreground">Площадка:</span>
-            <span>{selectedVenue ? VENUE_LABELS[selectedVenue] : 'выбрать'}</span>
+            <span className="hidden text-muted-foreground sm:inline">Площадка:</span>
+            <span>{selectedVenue ? VENUE_LABELS[selectedVenue] : 'Площадка'}</span>
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
           {venueDropdownOpen ? (

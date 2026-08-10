@@ -129,7 +129,6 @@ function ViewModeControl() {
               onClick={() => setViewMode(mode.id)}
               type="button"
             >
-              {mode.icon}
               <span>{mode.label}</span>
             </button>
           </ToolbarTooltip>

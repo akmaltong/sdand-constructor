@@ -270,7 +270,7 @@ export default function Home() {
       }}
     >
       {selectedVenue && <DefaultVenueSeeder venue={selectedVenue} />}
-      <div className="pointer-events-none absolute top-2 right-2 z-40 flex items-center gap-1 sm:top-4 sm:right-4 sm:gap-2">
+      <div className="pointer-events-none absolute top-3 right-2 z-40 flex items-center gap-1 sm:top-4 sm:right-4 sm:gap-2">
         <button
           aria-label="Отменить"
           className="pointer-events-auto inline-flex h-8 min-w-8 touch-manipulation items-center justify-center gap-1 rounded-md border border-border bg-background/90 px-2 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60 disabled:cursor-not-allowed disabled:opacity-40 sm:h-auto sm:px-3 sm:py-1.5"

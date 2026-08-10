@@ -292,7 +292,7 @@ export default function Home() {
         </button>
       </div>
       {(activeTool || activeMode === 'build' || activeMode === 'material-paint') && (
-        <div className="pointer-events-none absolute right-6 bottom-6 z-40 sm:right-8 sm:bottom-8">
+        <div className="pointer-events-none absolute top-16 right-3 z-40 sm:top-20 sm:right-8">
           <button
             aria-label="Готово"
             className="pointer-events-auto inline-flex h-16 w-16 touch-manipulation items-center justify-center rounded-full bg-emerald-500 text-white shadow-2xl transition hover:bg-emerald-600 active:scale-95 sm:h-20 sm:w-20"

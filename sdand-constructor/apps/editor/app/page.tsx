@@ -303,7 +303,7 @@ export default function Home() {
           </button>
         </div>
       )}
-      <div className="pointer-events-none absolute inset-x-0 top-2 z-40 flex justify-center sm:top-3">
+      <div className="pointer-events-none absolute inset-x-0 top-14 z-40 flex justify-center sm:top-3">
         <div className="pointer-events-auto relative">
           <button
             className="inline-flex h-8 touch-manipulation items-center gap-1 rounded-full border border-border bg-background/90 px-2.5 font-medium text-xs shadow-sm backdrop-blur transition hover:bg-accent/40 sm:h-auto sm:gap-1.5 sm:px-3 sm:py-1.5"

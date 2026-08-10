@@ -48,14 +48,22 @@ const parseStandFile = (buffer: ArrayBuffer, url: string): Promise<StandMeshAtla
     getWorker().postMessage({ id, buffer, url }, [buffer])
   })
 
-const buildStandGroup = (atlas: StandMeshAtlas): THREE.Group => {
+// Sdand: строим группу порциями по CHUNK меш за раз и yield-им через rAF,
+// чтобы main thread не залипал на 48 MB стенде с тысячами примитивов.
+const CHUNK = 200
+const buildStandGroupAsync = async (atlas: StandMeshAtlas): Promise<THREE.Group> => {
   const group = new THREE.Group()
   group.name = 'stand-import'
   group.userData.isStandImport = true
 
-  for (const entry of atlas.meshes) {
-    const mesh = buildStandMesh(entry)
-    group.add(mesh)
+  for (let i = 0; i < atlas.meshes.length; i += CHUNK) {
+    const end = Math.min(i + CHUNK, atlas.meshes.length)
+    for (let j = i; j < end; j++) {
+      group.add(buildStandMesh(atlas.meshes[j]!))
+    }
+    if (end < atlas.meshes.length) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    }
   }
 
   group.updateMatrixWorld(true)
@@ -126,7 +134,7 @@ export async function importStandModel(file: File): Promise<StandImportResult> {
   try {
     const buffer = await file.arrayBuffer()
     const atlas = await parseStandFile(buffer, url)
-    const group = buildStandGroup(atlas)
+    const group = await buildStandGroupAsync(atlas)
     setStandModel(url, group)
 
     const dimensions: [number, number, number] = [

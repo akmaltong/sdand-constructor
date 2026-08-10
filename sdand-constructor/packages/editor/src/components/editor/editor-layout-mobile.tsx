@@ -3,6 +3,7 @@
 import { getSceneTheme, useViewer } from '@pascal-app/viewer'
 import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import useEditor from '../../store/use-editor'
+import { useSidebarStore } from '../ui/primitives/sidebar'
 import { MobileTabBar } from '../ui/sidebar/mobile-tab-bar'
 import type { SidebarTab } from '../ui/sidebar/tab-bar'
 import { BottomSheet, type BottomSheetHandle } from './bottom-sheet'
@@ -55,6 +56,9 @@ export function EditorLayoutMobile({
   const isCaptureMode = useEditor((s) => s.isCaptureMode)
   const activePanel = useEditor((s) => s.activeSidebarPanel)
   const setActivePanel = useEditor((s) => s.setActiveSidebarPanel)
+  // Sdand: на мобиле кнопка «« (CollapseSidebarButton) прячет весь
+  // нижний sheet + tab-bar. Sidebar-store общий с десктопом.
+  const isCollapsed = useSidebarStore((state) => state.isCollapsed)
   const panelSheetHeight = useEditor((s) => s.mobilePanelSheetHeight)
   const isDark = useViewer((s) => getSceneTheme(s.sceneTheme).appearance === 'dark')
   const viewerBg = isDark ? VIEWER_BG_DARK : VIEWER_BG_LIGHT
@@ -249,7 +253,7 @@ export function EditorLayoutMobile({
         </div>
 
         {/* Bottom sheet: overlays the lower part of the middle area */}
-        {!isCaptureMode && sidebarTabs.length > 0 && (
+        {!isCaptureMode && !isCollapsed && sidebarTabs.length > 0 && (
           <BottomSheet
             initialHeightPx={SHEET_HANDLE_PX}
             onCommit={setCommittedSheetH}
@@ -264,7 +268,7 @@ export function EditorLayoutMobile({
         )}
       </div>
 
-      {!isCaptureMode && sidebarTabs.length > 0 && (
+      {!isCaptureMode && !isCollapsed && sidebarTabs.length > 0 && (
         <MobileTabBar activeTab={activePanel} onTabPress={handleTabPress} tabs={sidebarTabs} />
       )}
     </div>

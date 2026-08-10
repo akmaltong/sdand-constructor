@@ -111,25 +111,27 @@ const sampleTextureColor = (texture: Texture | null, fallback: Color): Color => 
   }
 }
 
-/** Wait until all textures in the GLTF result have loaded their image data. */
-const waitForTextures = (textures: Texture[]): Promise<void> => {
-  const pending = textures.filter((t) => !t.image)
-  if (pending.length === 0) return Promise.resolve()
+/** Polling wait: GLTFLoader may resolve before ImageBitmap decode finishes. */
+const waitForTextures = async (textures: Texture[]): Promise<void> => {
+  const deadline = performance.now() + 5000
+  while (performance.now() < deadline) {
+    if (textures.every((t) => !!t.image)) return
+    await new Promise<void>((resolve) => setTimeout(resolve, 50))
+  }
+}
 
-  return Promise.all(
-    pending.map(
-      (t) =>
-        new Promise<void>((resolve) => {
-          const onReady = () => {
-            t.removeEventListener('dispose', onReady)
-            resolve()
-          }
-          t.addEventListener('dispose', onReady)
-          // Fallback timeout: if texture never updates, resolve anyway
-          setTimeout(resolve, 3000)
-        }),
-    ),
-  ).then(() => {})
+const collectTextures = (root: Object3D): Texture[] => {
+  const set = new Set<Texture>()
+  root.traverse((obj) => {
+    const mesh = obj as Mesh
+    if (!mesh.isMesh) return
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    for (const m of materials) {
+      const props = m as unknown as { map?: Texture | null }
+      if (props.map) set.add(props.map)
+    }
+  })
+  return Array.from(set)
 }
 
 const readMaterial = (material: Material | Material[]): MaterialInfo => {
@@ -328,7 +330,10 @@ ctx.onmessage = (event: MessageEvent<StandParseRequest>) => {
     loader.parse(
       buffer,
       url,
-      (gltf) => {
+      async (gltf) => {
+        // Sdand: без ожидания текстур MeshStandardMaterial.map ещё пустой,
+        // baseColor остаётся дефолтным белым и вся модель едет «в мел».
+        await waitForTextures(collectTextures(gltf.scene))
         const atlas = collectAtlas(gltf.scene)
         if (atlas.meshCount === 0) {
           ctx.postMessage({ id, ok: false, error: 'В модели нет геометрии.' })

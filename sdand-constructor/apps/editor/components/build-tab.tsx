@@ -282,9 +282,10 @@ export function BuildTab() {
         source: 'mine',
       }
 
-      // Добавляем в историю (уникально по asset.id), сразу активируем.
+      // Sdand: НЕ ставим на сцену автоматически. Кладём в «Мои стенды»
+      // и раскрываем список — пользователь сам кликнет когда захочет.
       setImportedStands((prev) => [asset, ...prev.filter((a) => a.id !== asset.id)])
-      await activateImportedStand(asset)
+      setStandListOpen(true)
     } catch (error) {
       console.error('[stand-import]', error)
       setStandError(

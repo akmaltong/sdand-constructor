@@ -1,9 +1,13 @@
 import type { NextConfig } from 'next'
+import path from 'node:path'
 
 const nextConfig: NextConfig = {
   // Standalone build — самодостаточная папка .next/standalone,
   // запуск: node server.js (нужен только Node 20+).
   output: 'standalone',
+  // Sdand: явно указываем корень monorepo — иначе Turbopack на Vercel
+  // не может найти next/package.json из apps/editor/app.
+  outputFileTracingRoot: path.join(__dirname, '../..'),
   // Sdand: скрываем "N" dev-indicator внизу-слева — на демо заказчику
   // это выглядит неаккуратно.
   devIndicators: false,
@@ -21,6 +25,7 @@ const nextConfig: NextConfig = {
     '@pascal-app/mcp',
   ],
   turbopack: {
+    root: path.join(__dirname, '../..'),
     resolveAlias: {
       react: './node_modules/react',
       three: './node_modules/three',

@@ -220,13 +220,13 @@
         "zod": "^4.3.5",
       },
       "devDependencies": {
-        "@pascal-app/core": "^0.9.1",
+        "@pascal-app/core": "*",
         "@pascal/typescript-config": "*",
         "@types/node": "^22.19.20",
         "typescript": "6.0.3",
       },
       "peerDependencies": {
-        "@pascal-app/core": "^0.9.1",
+        "@pascal-app/core": "*",
       },
     },
     "packages/nodes": {

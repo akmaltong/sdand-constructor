@@ -1,0 +1,1 @@
+{"version":3,"file":"hole-editor.d.ts","sourceRoot":"","sources":["../../src/ceiling/hole-editor.tsx"],"names":[],"mappings":"AAEA,OAAO,EAAE,KAAK,WAAW,EAAkD,MAAM,kBAAkB,CAAA;AAKnG;;GAEG;AACH,eAAO,MAAM,iBAAiB,EAAE,KAAK,CAAC,EAAE,CAAC;IACvC,SAAS,EAAE,WAAW,CAAC,IAAI,CAAC,CAAA;IAC5B,SAAS,EAAE,MAAM,CAAA;CAClB,CAwDA,CAAA;AAED,eAAe,iBAAiB,CAAA"}

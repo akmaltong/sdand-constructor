@@ -1,0 +1,57 @@
+import { Brush, csgEvaluator, csgGeometry, prepareBrushForCSG, SUBTRACTION, } from '@pascal-app/viewer';
+import * as THREE from 'three';
+const visibleDummyMat = new THREE.MeshBasicMaterial();
+export function buildFrameGeometry({ curb, curbHeight, frameDepth, frameThickness, height, width, }) {
+    const w = width;
+    const h = height;
+    const ft = frameThickness;
+    const fd = frameDepth;
+    const hasCurb = curb ?? false;
+    const curbH = hasCurb ? Math.max(0, curbHeight ?? 0.1) : 0;
+    const outerW = w + 2 * ft;
+    const outerH = h + 2 * ft;
+    const totalDepth = fd + curbH;
+    const outerBox = new THREE.BoxGeometry(outerW, totalDepth, outerH);
+    const innerBox = new THREE.BoxGeometry(w, totalDepth + 0.02, h);
+    const setupGeo = (geo) => {
+        const ic = geo.getIndex()?.count ?? 0;
+        geo.clearGroups();
+        if (ic > 0)
+            geo.addGroup(0, ic, 0);
+    };
+    setupGeo(outerBox);
+    setupGeo(innerBox);
+    let frameGeo;
+    try {
+        const outerBrush = new Brush(outerBox, visibleDummyMat);
+        prepareBrushForCSG(outerBrush);
+        const innerBrush = new Brush(innerBox, visibleDummyMat);
+        prepareBrushForCSG(innerBrush);
+        const result = csgEvaluator.evaluate(outerBrush, innerBrush, SUBTRACTION);
+        frameGeo = csgGeometry(result).clone();
+        const ic = frameGeo.getIndex()?.count ?? 0;
+        frameGeo.clearGroups();
+        if (ic > 0)
+            frameGeo.addGroup(0, ic, 0);
+        outerBox.dispose();
+        innerBox.dispose();
+        result.geometry.dispose();
+    }
+    catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Skylight frame CSG failed:', e);
+        outerBox.dispose();
+        innerBox.dispose();
+        return null;
+    }
+    frameGeo.translate(0, -totalDepth / 2 + curbH, 0);
+    // WebGPU node renderer requests `uv2` on every geometry for lightmap support.
+    // CSG output only carries position + normal + uv. Copy uv → uv2 so the
+    // AttributeNode lookup doesn't fail and invalidate the render pipeline.
+    // Mirrors `ensureUv2Attribute` in packages/viewer/src/systems/roof/roof-system.tsx.
+    const uv = frameGeo.getAttribute('uv');
+    if (uv) {
+        frameGeo.setAttribute('uv2', new THREE.Float32BufferAttribute(Array.from(uv.array), 2));
+    }
+    return frameGeo;
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"geometry.d.ts","sourceRoot":"","sources":["../../src/fence/geometry.ts"],"names":[],"mappings":"AAAA,OAAO,EAGL,KAAK,aAAa,EACnB,MAAM,oBAAoB,CAAA;AAC3B,OAAO,EAAE,KAAK,EAAQ,MAAM,OAAO,CAAA;AACnC,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,UAAU,CAAA;AAEzC;;;;;;;;;;;;;;;GAeG;AACH,wBAAgB,kBAAkB,CAChC,IAAI,EAAE,SAAS,EACf,IAAI,CAAC,EAAE,OAAO,EACd,OAAO,GAAE,aAA0B,GAClC,KAAK,CAQP"}

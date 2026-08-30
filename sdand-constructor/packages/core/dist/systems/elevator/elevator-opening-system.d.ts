@@ -1,0 +1,2 @@
+export declare const ElevatorOpeningSystem: () => null;
+//# sourceMappingURL=elevator-opening-system.d.ts.map

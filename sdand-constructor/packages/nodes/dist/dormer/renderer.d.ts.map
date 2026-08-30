@@ -1,0 +1,1 @@
+{"version":3,"file":"renderer.d.ts","sourceRoot":"","sources":["../../src/dormer/renderer.tsx"],"names":[],"mappings":"AAEA,OAAO,EAEL,KAAK,UAAU,EAMhB,MAAM,kBAAkB,CAAA;AAWzB,OAAO,EAEL,2BAA2B,EAE5B,MAAM,gBAAgB,CAAA;AAGvB,QAAA,MAAM,cAAc,GAAI,qBAAqB;IAAE,IAAI,EAAE,UAAU,CAAA;CAAE,uCAyJhE,CAAA;AAID,OAAO,EAAE,2BAA2B,EAAE,CAAA;AAEtC,eAAe,cAAc,CAAA"}

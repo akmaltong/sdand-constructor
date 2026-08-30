@@ -1,0 +1,1 @@
+{"version":3,"file":"elevator-opening-sync.d.ts","sourceRoot":"","sources":["../../../src/systems/elevator/elevator-opening-sync.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EACV,OAAO,EACP,SAAS,EACT,WAAW,EAEX,QAAQ,EAET,MAAM,cAAc,CAAA;AA8JrB,wBAAgB,wBAAwB,CAAC,KAAK,EAAE,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC;QAQ1C,SAAS;UAAQ,OAAO,CAAC,QAAQ,GAAG,WAAW,CAAC;IAmG5E"}

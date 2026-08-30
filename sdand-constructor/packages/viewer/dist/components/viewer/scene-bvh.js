@@ -1,0 +1,98 @@
+import { jsx as _jsx } from "react/jsx-runtime";
+import { useThree } from '@react-three/fiber';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { Mesh } from 'three';
+import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree, SAH, } from 'three-mesh-bvh';
+const isMesh = (object) => !!object && typeof object === 'object' && object.isMesh === true;
+const hasBvhCompatibleGeometry = (geometry) => {
+    if (!geometry)
+        return false;
+    const position = geometry.getAttribute('position');
+    if (!position)
+        return false;
+    const vertexCount = geometry.getIndex()?.count ?? position.count;
+    return vertexCount >= 3;
+};
+export const SceneBvh = forwardRef(({ children, enabled = true, firstHitOnly = false, strategy = SAH, verbose = false, setBoundingBox = true, maxDepth = 40, maxLeafSize = 10, indirect = false, }, forwardedRef) => {
+    const ref = useRef(null);
+    const raycaster = useThree((state) => state.raycaster);
+    useImperativeHandle(forwardedRef, () => ref.current, []);
+    useEffect(() => {
+        if (!enabled || !ref.current)
+            return;
+        const options = {
+            strategy,
+            verbose,
+            setBoundingBox,
+            maxDepth,
+            maxLeafSize,
+            indirect,
+        };
+        const group = ref.current;
+        const acceleratedMeshes = new Set();
+        const computedGeometries = new Set();
+        raycaster.firstHitOnly = firstHitOnly;
+        group.traverse((child) => {
+            if (!isMesh(child))
+                return;
+            // Imported stands carry huge merged geometry — building a SAH BVH for
+            // them freezes the frame; plain Mesh.raycast is plenty for picking.
+            if (child.geometry?.userData?.skipBvh)
+                return;
+            if (child.raycast === Mesh.prototype.raycast) {
+                child.raycast = acceleratedRaycast;
+                acceleratedMeshes.add(child);
+            }
+            if (child.raycast !== acceleratedRaycast)
+                return;
+            const geometry = child.geometry;
+            if (geometry.boundsTree || !hasBvhCompatibleGeometry(geometry))
+                return;
+            try {
+                // The three-mesh-bvh + @types/three combo doesn't agree on
+                // BVH option / class identity (ComputeBVHOptions vs
+                // MeshBVHOptions, GeometryBVH vs MeshBVH) — cast through
+                // `unknown` to bypass the structural mismatch. Runtime is
+                // fine; we're just calling the library's own helpers.
+                ;
+                geometry.computeBoundsTree =
+                    computeBoundsTree;
+                geometry.disposeBoundsTree =
+                    disposeBoundsTree;
+                geometry.computeBoundsTree(options);
+                computedGeometries.add(geometry);
+            }
+            catch (error) {
+                console.warn('[viewer] Skipping BVH for incompatible mesh geometry.', {
+                    mesh: child.name || child.type,
+                    error,
+                });
+            }
+        });
+        return () => {
+            delete raycaster.firstHitOnly;
+            for (const geometry of computedGeometries) {
+                if (geometry.boundsTree) {
+                    geometry.disposeBoundsTree();
+                }
+            }
+            for (const mesh of acceleratedMeshes) {
+                if (mesh.raycast === acceleratedRaycast) {
+                    mesh.raycast = Mesh.prototype.raycast;
+                }
+            }
+        };
+    }, [
+        enabled,
+        firstHitOnly,
+        strategy,
+        verbose,
+        setBoundingBox,
+        maxDepth,
+        maxLeafSize,
+        indirect,
+        raycaster,
+    ]);
+    return _jsx("group", { ref: ref, children: children });
+});
+SceneBvh.displayName = 'SceneBvh';

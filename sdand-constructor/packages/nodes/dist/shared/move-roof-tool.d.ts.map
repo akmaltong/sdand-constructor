@@ -1,0 +1,1 @@
+{"version":3,"file":"move-roof-tool.d.ts","sourceRoot":"","sources":["../../src/shared/move-roof-tool.tsx"],"names":[],"mappings":"AAAA,OAAO,EASL,KAAK,QAAQ,EACb,KAAK,eAAe,EAEpB,KAAK,SAAS,EACd,KAAK,gBAAgB,EAKtB,MAAM,kBAAkB,CAAA;AAsBzB,eAAO,MAAM,YAAY,EAAE,KAAK,CAAC,EAAE,CAAC;IAClC,IAAI,EAAE,QAAQ,GAAG,eAAe,GAAG,SAAS,GAAG,gBAAgB,CAAA;CAChE,CA2cA,CAAA;AAED,eAAe,YAAY,CAAA"}

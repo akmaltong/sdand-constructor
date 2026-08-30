@@ -1,0 +1,112 @@
+'use client';
+import { jsx as _jsx } from "react/jsx-runtime";
+import { collectAlignmentAnchors, emitter, ShelfNode, useScene, } from '@pascal-app/core';
+import { getFloorStackPreviewPosition, triggerSFX, useAlignmentGuides, useEditor, } from '@pascal-app/editor';
+import { useViewer } from '@pascal-app/viewer';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { getLevelLocalSnappedPosition, resolveAlignedFloorPlacement, stopPlacementCommitPropagation, subscribeFloorPlacementClicks, } from '../shared/floor-placement';
+import { shelfDefinition } from './definition';
+import ShelfPreview from './preview';
+const ShelfTool = () => {
+    const activeLevelId = useViewer((state) => state.selection.levelId);
+    const cursorRef = useRef(null);
+    const previousSnapRef = useRef(null);
+    const cursorVisibleRef = useRef(false);
+    const [cursorVisible, setCursorVisible] = useState(false);
+    // Default-shaped shelf for the placement preview. Pulls from
+    // `shelfDefinition.defaults()` so the preview matches what the commit
+    // will actually create (a 1m × 0.5m × 1.8m cubby 3x2 with closed back
+    // + bottom). The schema-level defaults are deliberately the v1
+    // wall-shelf — those exist so v1 scenes loading under v2 keep their
+    // original visual; the placement default is a separate, user-facing
+    // choice that lives on the definition.
+    const previewNode = useMemo(() => ShelfNode.parse({
+        ...shelfDefinition.defaults(),
+        name: 'Shelf',
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+    }), []);
+    useEffect(() => {
+        if (!activeLevelId)
+            return;
+        previousSnapRef.current = null;
+        cursorVisibleRef.current = false;
+        setCursorVisible(false);
+        /**
+         * Snapped cursor position from the latest `grid:move`. Used as the
+         * commit position for ANY click variant (grid or node), so clicks
+         * on vertical surfaces (other shelves, walls, etc.) still commit
+         * where the user was visually targeting.
+         */
+        const lastCursorRef = { current: null };
+        // Alignment candidates — anchors of every OTHER alignable object (items,
+        // walls, fences, slabs, ceilings, columns, other shelves). Gathered once
+        // here and refreshed after each placement so a just-placed shelf becomes a
+        // target for the next one. `previewNode.id` never collides with a scene
+        // node, so nothing real is excluded.
+        let alignmentCandidates = collectAlignmentAnchors(useScene.getState().nodes, previewNode.id);
+        const onGridMove = (event) => {
+            if (!cursorVisibleRef.current) {
+                cursorVisibleRef.current = true;
+                setCursorVisible(true);
+            }
+            const { position, guides } = resolveAlignedFloorPlacement({
+                node: previewNode,
+                rawX: event.localPosition[0],
+                rawZ: event.localPosition[2],
+                gridStep: useEditor.getState().gridSnapStep,
+                candidates: alignmentCandidates,
+                bypassAlignment: event.nativeEvent?.altKey === true,
+            });
+            useAlignmentGuides.getState().set(guides);
+            const visualPosition = getFloorStackPreviewPosition({
+                node: previewNode,
+                position,
+                rotation: previewNode.rotation,
+                levelId: activeLevelId,
+            });
+            cursorRef.current?.position.set(...visualPosition);
+            lastCursorRef.current = position;
+            const prev = previousSnapRef.current;
+            if (!prev || prev[0] !== position[0] || prev[1] !== position[2]) {
+                triggerSFX('sfx:grid-snap');
+                previousSnapRef.current = [position[0], position[2]];
+            }
+        };
+        const commitAtCursor = (event) => {
+            // Prefer the latest `grid:move` cursor snapshot; fall back to
+            // projecting the click event into level-local coords if no
+            // grid:move has fired yet (e.g. cursor entered via a node hit
+            // first). Both paths apply the same grid snap.
+            const position = lastCursorRef.current ??
+                getLevelLocalSnappedPosition(activeLevelId, event, useEditor.getState().gridSnapStep);
+            const shelf = ShelfNode.parse({
+                ...shelfDefinition.defaults(),
+                name: 'Shelf',
+                position,
+                rotation: [0, 0, 0],
+            });
+            useScene.getState().createNode(shelf, activeLevelId);
+            useViewer.getState().setSelection({ selectedIds: [shelf.id] });
+            triggerSFX('sfx:item-place');
+            // The placed shelf is now a valid alignment target for the next one;
+            // refresh the candidate pool and drop the guide from this drop.
+            alignmentCandidates = collectAlignmentAnchors(useScene.getState().nodes, previewNode.id);
+            useAlignmentGuides.getState().clear();
+            stopPlacementCommitPropagation(event);
+        };
+        emitter.on('grid:move', onGridMove);
+        const unsubscribePlacementClicks = subscribeFloorPlacementClicks(commitAtCursor);
+        return () => {
+            emitter.off('grid:move', onGridMove);
+            unsubscribePlacementClicks();
+            // Drop any alignment guide left over when the tool deactivates (kind
+            // switch, Esc, unmount) so it doesn't linger over the canvas.
+            useAlignmentGuides.getState().clear();
+        };
+    }, [activeLevelId, previewNode]);
+    if (!activeLevelId)
+        return null;
+    return (_jsx("group", { ref: cursorRef, visible: cursorVisible, children: _jsx(ShelfPreview, { node: previewNode }) }));
+};
+export default ShelfTool;

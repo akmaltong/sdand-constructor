@@ -1,0 +1,12 @@
+export declare const CASEMENT_WINDOW_SASH_NAME = "casement-window-sash";
+export declare const FRENCH_CASEMENT_LEFT_SASH_NAME = "french-casement-left-sash";
+export declare const FRENCH_CASEMENT_RIGHT_SASH_NAME = "french-casement-right-sash";
+export declare const SLIDING_WINDOW_ACTIVE_PANEL_NAME = "sliding-window-active-panel";
+export declare const SINGLE_HUNG_ACTIVE_SASH_NAME = "single-hung-active-sash";
+export declare const DOUBLE_HUNG_TOP_SASH_NAME = "double-hung-top-sash";
+export declare const DOUBLE_HUNG_BOTTOM_SASH_NAME = "double-hung-bottom-sash";
+export declare const LOUVERED_WINDOW_SLATS_NAME = "louvered-window-slats";
+export declare const AWNING_WINDOW_SASH_NAME = "awning-window-sash";
+export declare const HOPPER_WINDOW_SASH_NAME = "hopper-window-sash";
+export declare const WindowSystem: () => null;
+//# sourceMappingURL=window-system.d.ts.map

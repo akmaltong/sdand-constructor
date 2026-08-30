@@ -1,0 +1,1 @@
+{"version":3,"file":"stair-opening-sync.d.ts","sourceRoot":"","sources":["../../../src/systems/stair/stair-opening-sync.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EACV,OAAO,EACP,SAAS,EACT,WAAW,EACX,QAAQ,EAIT,MAAM,cAAc,CAAA;AA8rBrB,wBAAgB,qBAAqB,CAAC,KAAK,EAAE,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC;QAQvC,SAAS;UAAQ,OAAO,CAAC,QAAQ,GAAG,WAAW,CAAC;IAqG5E"}

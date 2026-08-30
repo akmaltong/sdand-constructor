@@ -1,0 +1,1 @@
+{"version":3,"file":"hole-editor.d.ts","sourceRoot":"","sources":["../../src/slab/hole-editor.tsx"],"names":[],"mappings":"AAEA,OAAO,EAAkB,KAAK,QAAQ,EAAkC,MAAM,kBAAkB,CAAA;AAKhG;;;;;;GAMG;AACH,eAAO,MAAM,cAAc,EAAE,KAAK,CAAC,EAAE,CAAC;IAAE,MAAM,EAAE,QAAQ,CAAC,IAAI,CAAC,CAAC;IAAC,SAAS,EAAE,MAAM,CAAA;CAAE,CAgElF,CAAA;AAED,eAAe,cAAc,CAAA"}

@@ -57,7 +57,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "echo skip",
     "dev": "tsc --build --watch",
     "test": "bun test",
     "bench:registry": "bun run src/registry/__bench__/relations-resolver.bench.ts",

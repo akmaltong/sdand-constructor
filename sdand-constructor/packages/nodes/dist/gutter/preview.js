@@ -1,0 +1,55 @@
+'use client';
+import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
+import { useEffect, useMemo } from 'react';
+import * as THREE from 'three';
+import { buildGutterGeometry } from './geometry';
+/**
+ * Translucent ghost of a gutter — built from the same `buildGutterGeometry`
+ * the renderer commits, so the shape on screen during placement is the
+ * shape that lands on click.
+ *
+ * No internal transform wrapper. Callers (placement tool + move tool)
+ * mirror the GutterRenderer's transform chain around this component
+ * (roof → segment → snap), so the ghost shares one bulletproof chain
+ * with the committed mesh instead of a flattened-yaw shortcut that can
+ * drift in edge cases.
+ *
+ * FrontSide matches the renderer; DoubleSide would render the inside
+ * of the trough walls and visually thicken the ghost relative to the
+ * placed gutter.
+ */
+const GutterPreview = ({ node }) => {
+    const geometry = useMemo(() => buildGutterGeometry(node), [
+        node.length,
+        node.size,
+        node.thickness,
+        node.profile,
+        node.endCapLeft,
+        node.endCapRight,
+        node.hangerStyle,
+        node.hangerSpacing,
+        JSON.stringify(node.outlets),
+    ]);
+    const material = useMemo(() => new THREE.MeshStandardMaterial({
+        color: 0xff_ff_ff,
+        emissive: 0xff_ff_ff,
+        emissiveIntensity: 0.12,
+        roughness: 0.7,
+        metalness: 0.2,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        side: THREE.FrontSide,
+    }), []);
+    const edgesGeometry = useMemo(() => new THREE.EdgesGeometry(geometry, 25), [geometry]);
+    useEffect(() => () => {
+        geometry.dispose();
+        edgesGeometry.dispose();
+        material.dispose();
+    }, [geometry, edgesGeometry, material]);
+    return (_jsxs(_Fragment, { children: [_jsx("mesh", { geometry: geometry, material: material, 
+                // See box-vent preview note — never let the preview swallow
+                // roof events meant for the placement tool's hit-tester.
+                raycast: () => { } }), _jsx("lineSegments", { geometry: edgesGeometry, renderOrder: 1000, children: _jsx("lineBasicMaterial", { color: 0x6c_a3_ff, depthTest: false, opacity: 0.9, transparent: true }) })] }));
+};
+export default GutterPreview;

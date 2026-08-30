@@ -1,0 +1,1 @@
+{"version":3,"file":"preview.d.ts","sourceRoot":"","sources":["../../src/downspout/preview.tsx"],"names":[],"mappings":"AAKA,OAAO,KAAK,EAAE,gBAAgB,EAAE,MAAM,WAAW,CAAA;AACjD,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,UAAU,CAAA;AAE7C;;;;;;;;;GASG;AACH,QAAA,MAAM,gBAAgB,GAAI,oBAGvB;IACD,IAAI,EAAE,aAAa,CAAA;IACnB,OAAO,CAAC,EAAE,gBAAgB,GAAG,IAAI,CAAA;CAClC,gCAkDA,CAAA;AAED,eAAe,gBAAgB,CAAA"}

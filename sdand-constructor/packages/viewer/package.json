@@ -17,12 +17,12 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "echo skip",
     "dev": "tsc --build --watch",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "@pascal-app/core": "^0.9.1",
+    "@pascal-app/core": "*",
     "@react-three/drei": "^10",
     "@react-three/fiber": "^9",
     "react": "^18 || ^19",

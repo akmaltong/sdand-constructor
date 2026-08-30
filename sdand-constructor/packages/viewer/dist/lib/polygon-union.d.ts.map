@@ -1,0 +1,1 @@
+{"version":3,"file":"polygon-union.d.ts","sourceRoot":"","sources":["../../src/lib/polygon-union.ts"],"names":[],"mappings":"AAAA,MAAM,MAAM,OAAO,GAAG,CAAC,MAAM,EAAE,MAAM,CAAC,CAAA;AAwStC,wBAAgB,aAAa,CAAC,QAAQ,EAAE,OAAO,EAAE,EAAE,GAAG,OAAO,EAAE,EAAE,CAShE;AA4CD,wBAAgB,2BAA2B,CAAC,OAAO,EAAE,OAAO,EAAE,EAAE,OAAO,EAAE,OAAO,EAAE,EAAE,GAAG,OAAO,EAAE,EAAE,CAkBjG"}

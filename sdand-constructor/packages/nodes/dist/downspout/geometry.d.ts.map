@@ -1,0 +1,1 @@
+{"version":3,"file":"geometry.d.ts","sourceRoot":"","sources":["../../src/downspout/geometry.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,kBAAkB,CAAA;AACrD,OAAO,KAAK,KAAK,MAAM,OAAO,CAAA;AAG9B,OAAO,EAGL,KAAK,gBAAgB,EAGtB,MAAM,WAAW,CAAA;AAwClB,wBAAgB,sBAAsB,CACpC,IAAI,EAAE,aAAa,EACnB,OAAO,CAAC,EAAE,gBAAgB,GAAG,IAAI,GAChC,KAAK,CAAC,cAAc,CA+CtB"}

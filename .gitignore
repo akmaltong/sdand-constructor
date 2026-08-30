@@ -34,3 +34,5 @@ sdand-constructor/external-equipment-catalog/
 .claude/settings.local.json
 .claude/**/skills
 backups/
+.vercel
+.env*

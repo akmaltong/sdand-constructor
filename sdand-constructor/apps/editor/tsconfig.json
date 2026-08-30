@@ -7,7 +7,17 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@pascal-app/core": ["../../packages/core/src/index.ts"],
+      "@pascal-app/core/*": ["../../packages/core/src/*"],
+      "@pascal-app/viewer": ["../../packages/viewer/src/index.ts"],
+      "@pascal-app/viewer/*": ["../../packages/viewer/src/*"],
+      "@pascal-app/editor": ["../../packages/editor/src/index.ts"],
+      "@pascal-app/editor/*": ["../../packages/editor/src/*"],
+      "@pascal-app/nodes": ["../../packages/nodes/src/index.ts"],
+      "@pascal-app/nodes/*": ["../../packages/nodes/src/*"],
+      "@pascal-app/mcp": ["../../packages/mcp/src/index.ts"],
+      "@pascal-app/mcp/*": ["../../packages/mcp/src/*"]
     }
   },
   "include": [

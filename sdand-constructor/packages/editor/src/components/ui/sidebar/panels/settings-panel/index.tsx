@@ -152,9 +152,12 @@ export interface SettingsPanelProps {
     field: 'isPrivate' | 'showScansPublic' | 'showGuidesPublic',
     value: boolean,
   ) => Promise<void>
+  /** Вызывается вместо внутреннего handleResetToDefault — позволяет хосту полностью очистить состояние включая выбор площадки */
+  onReset?: () => void
 }
 
 export function SettingsPanel(_props: SettingsPanelProps = {}) {
+  const { onReset } = _props
   const fileInputRef = useRef<HTMLInputElement>(null)
   const nodes = useScene((state) => state.nodes)
   const rootNodeIds = useScene((state) => state.rootNodeIds)
@@ -232,6 +235,10 @@ export function SettingsPanel(_props: SettingsPanelProps = {}) {
   }
 
   const handleResetToDefault = () => {
+    if (onReset) {
+      onReset()
+      return
+    }
     clearScene()
     resetSelection()
     useEditor.getState().setTool(null)

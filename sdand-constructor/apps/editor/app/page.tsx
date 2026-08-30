@@ -6,13 +6,12 @@ import {
   CATALOG_ITEMS,
   Editor,
   ItemsPanel,
-  saveSceneToLocalStorage,
   SettingsPanel,
   useEditor,
   useScene,
 } from '@pascal-app/editor'
 import { emitter } from '@pascal-app/core'
-import { Check, ChevronDown, Hammer, RotateCcw, Settings, Undo2, Upload } from 'lucide-react'
+import { Check, ChevronDown, Hammer, Settings, Undo2, Upload } from 'lucide-react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { BuildTab } from '@/components/build-tab'
@@ -21,7 +20,6 @@ import {
   CommunityViewerToolbarLeft,
   CommunityViewerToolbarRight,
 } from '@/components/viewer-toolbar'
-import { resolveSdandPlacementAsset } from '@/lib/sdand-workflow'
 
 // Импорт пользовательской модели/текстуры:
 //   .glb/.gltf → обычный item (useGLTF грузит по object-URL)
@@ -172,8 +170,23 @@ const PROJECT_ID = 'local-editor'
 
 const VENUE_LABELS: Record<VenueId, string> = { gostinka: 'Гостинка', manezh: 'Манеж' }
 
+/** Полностью очищает сцену: удаляет все ноды, сбрасывает историю и площадку. */
+function fullClearScene() {
+  localStorage.removeItem('pascal-editor-ui-preferences')
+  localStorage.removeItem('pascal-editor-scene')
+  localStorage.removeItem('pascal-editor-selection')
+  const ed = useEditor.getState()
+  ed.setPhase('site')
+  ed.setMode('select')
+  ed.setTool(null)
+  ed.setCatalogCategory(null)
+  ed.setSelectedItem(null as never)
+  applySceneGraphToEditor(null)
+  useScene.temporal.getState().clear()
+}
+
 export default function Home() {
-  const [showWelcome, setShowWelcome] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(true)
   const [selectedVenue, setSelectedVenue] = useState<VenueId | null>(null)
   const [venueDropdownOpen, setVenueDropdownOpen] = useState(false)
 
@@ -193,7 +206,7 @@ export default function Home() {
   const handleVenueSelect = useCallback((venue: VenueId) => {
     setSelectedVenue(venue)
     setVenueDropdownOpen(false)
-    // Clear persisted editor state so no tool is active from previous session
+    // Сбрасываем инструмент редактора
     const ed = useEditor.getState()
     ed.setPhase('site')
     ed.setMode('select')
@@ -201,16 +214,11 @@ export default function Home() {
     ed.setCatalogCategory(null)
   }, [])
 
-  const handlePresetSelect = useCallback((kind: 'podium' | 'equipment') => {
-    const asset = resolveSdandPlacementAsset(CATALOG_ITEMS, kind)
-    const ed = useEditor.getState()
-    ed.setPhase('structure')
-    ed.setStructureLayer('elements')
-    ed.setMode('build')
-    ed.setTool('item')
-    ed.setCatalogCategory(kind === 'equipment' ? 'kitchen' : 'furniture')
-    if (asset) ed.setSelectedItem(asset as never)
-    setShowWelcome(false)
+  /** Выбрать «Пустой проект»: очистить всё и убрать площадку */
+  const handleSelectEmpty = useCallback(() => {
+    fullClearScene()
+    setSelectedVenue(null)
+    setVenueDropdownOpen(false)
   }, [])
 
   // Работает как Esc: снимает активный инструмент, возвращает нейтральный
@@ -239,22 +247,24 @@ export default function Home() {
   const canUndo = pastStatesLength > 0
   const handleUndo = useCallback(() => {
     useScene.temporal.getState().undo()
+    // После отката проверяем, осталась ли venue-нода в сцене.
+    // Если нет — убираем selectedVenue, чтобы DefaultVenueSeeder не пересеял.
+    requestAnimationFrame(() => {
+      const nodes = useScene.getState().nodes
+      const hasVenueNode = Object.values(nodes).some(
+        (n) =>
+          (n as { type?: string; metadata?: { tag?: string } }).type === 'scan' &&
+          (n as { metadata?: { tag?: string } }).metadata?.tag === 'sdand:default-venue',
+      )
+      if (!hasVenueNode) {
+        setSelectedVenue(null)
+      }
+    })
   }, [])
 
   const handleReset = useCallback(() => {
-    // Clear persisted state FIRST so zustand persist does not restore old tool/mode
-    localStorage.removeItem('pascal-editor-ui-preferences')
-    localStorage.removeItem('pascal-editor-scene')
-    localStorage.removeItem('pascal-editor-selection')
-    const ed = useEditor.getState()
-    ed.setPhase('site')
-    ed.setMode('select')
-    ed.setTool(null)
-    ed.setCatalogCategory(null)
-    ed.setSelectedItem(null as never)
-    applySceneGraphToEditor(null)
-    // Площадка СОХРАНЯЕТСЯ — DefaultVenueSeeder пересеет venue-scan автоматически.
-    // setSelectedVenue(null) намеренно убран.
+    fullClearScene()
+    setSelectedVenue(null)
     setVenueDropdownOpen(false)
   }, [])
 
@@ -281,15 +291,6 @@ export default function Home() {
           <Undo2 className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Undo</span>
         </button>
-        <button
-          aria-label="Сбросить"
-          className="pointer-events-auto inline-flex h-8 min-w-8 touch-manipulation items-center justify-center gap-1 rounded-md border border-border bg-background/90 px-2 font-medium text-xs shadow-sm backdrop-blur hover:bg-accent/40 active:bg-accent/60 sm:h-auto sm:px-3 sm:py-1.5"
-          onClick={handleReset}
-          type="button"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Reset</span>
-        </button>
       </div>
       {(activeTool || activeMode === 'build' || activeMode === 'material-paint') && (
         <div className="pointer-events-none absolute top-16 right-3 z-40 sm:top-20 sm:right-8">
@@ -315,8 +316,16 @@ export default function Home() {
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
           {venueDropdownOpen ? (
-            <div className="absolute top-full left-1/2 mt-1.5 flex -translate-x-1/2 gap-1 rounded-xl border border-border bg-background/95 p-1 shadow-2xl backdrop-blur">
-              {(['gostinka', 'manezh'] as const).map((v) => (
+            <div className="absolute top-full left-1/2 mt-1.5 flex flex-col -translate-x-1/2 min-w-[120px] rounded-xl border border-border bg-background/95 p-1 shadow-2xl backdrop-blur">
+              <button
+                className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs whitespace-nowrap hover:bg-accent/40"
+                onClick={handleSelectEmpty}
+                type="button"
+              >
+                <span>Пустой проект</span>
+                {selectedVenue === null ? <span className="text-primary">●</span> : null}
+              </button>
+              {(['manezh', 'gostinka'] as const).map((v) => (
                 <button
                   className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs whitespace-nowrap hover:bg-accent/40"
                   key={v}
@@ -332,25 +341,47 @@ export default function Home() {
         </div>
       </div>
       {showWelcome ? (
-        <div className="pointer-events-auto absolute inset-x-0 top-16 z-50 mx-auto flex w-[min(560px,calc(100%-2rem))] flex-col gap-3 rounded-2xl border border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
-          <div className="flex items-start justify-between gap-3">
+        <div className="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="flex w-[min(400px,calc(100%-2rem))] flex-col gap-4 rounded-2xl border border-border bg-background/95 p-6 shadow-2xl">
             <div>
-              <p className="font-semibold text-sm">Конфигуратор выставочных стендов</p>
-              <p className="mt-1 text-muted-foreground text-xs">Начните с выбора базового подиума или оборудования, затем уточните стены и сцену.</p>
+              <p className="font-semibold text-base">Конфигуратор выставочных стендов</p>
+              <p className="mt-1 text-muted-foreground text-sm">Выберите площадку для начала работы</p>
             </div>
-            <button className="text-muted-foreground text-xs" onClick={() => setShowWelcome(false)} type="button">
-              Пропустить
-            </button>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button className="rounded-xl border border-border bg-muted/30 p-3 text-left transition hover:bg-muted/60" onClick={() => handlePresetSelect('podium')} type="button">
-              <p className="font-medium text-sm">Подиум</p>
-              <p className="mt-1 text-muted-foreground text-xs">Быстро разместить готовый стенд</p>
-            </button>
-            <button className="rounded-xl border border-border bg-muted/30 p-3 text-left transition hover:bg-muted/60" onClick={() => handlePresetSelect('equipment')} type="button">
-              <p className="font-medium text-sm">Оборудование</p>
-              <p className="mt-1 text-muted-foreground text-xs">Добавить интерактивные панели и стойки</p>
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-left transition hover:bg-muted/60"
+                onClick={() => {
+                  setSelectedVenue(null)
+                  setShowWelcome(false)
+                }}
+                type="button"
+              >
+                <p className="font-medium text-sm">Пустой проект</p>
+                <p className="mt-0.5 text-muted-foreground text-xs">Начать с чистого листа без площадки</p>
+              </button>
+              <button
+                className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-left transition hover:bg-muted/60"
+                onClick={() => {
+                  handleVenueSelect('manezh')
+                  setShowWelcome(false)
+                }}
+                type="button"
+              >
+                <p className="font-medium text-sm">Манеж</p>
+                <p className="mt-0.5 text-muted-foreground text-xs">Загрузить площадку «Манеж»</p>
+              </button>
+              <button
+                className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-left transition hover:bg-muted/60"
+                onClick={() => {
+                  handleVenueSelect('gostinka')
+                  setShowWelcome(false)
+                }}
+                type="button"
+              >
+                <p className="font-medium text-sm">Гостинка</p>
+                <p className="mt-0.5 text-muted-foreground text-xs">Загрузить площадку «Гостиный двор»</p>
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -358,6 +389,7 @@ export default function Home() {
         layoutVersion="v2"
         projectId={PROJECT_ID}
         sidebarTabs={SIDEBAR_TABS}
+        settingsPanelProps={{ onReset: handleReset }}
         viewerToolbarLeft={<CommunityViewerToolbarLeft />}
         viewerToolbarRight={<CommunityViewerToolbarRight />}
         hideLevelSelector

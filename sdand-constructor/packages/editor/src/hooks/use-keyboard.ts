@@ -64,6 +64,22 @@ export const useKeyboard = ({
           useViewer.getState().setSelection({ selectedIds: [], zoneId: null })
           useEditor.getState().setSelectedReferenceId(null)
         }
+      } else if (e.key === 'Enter') {
+        // Enter = ПРИМЕНИТЬ: та же логика что у зелёной кнопки «Готово» на странице.
+        const ed = useEditor.getState()
+        const currentTool = ed.tool
+        const currentMode = ed.mode
+        if (currentTool || currentMode === 'build' || currentMode === 'material-paint') {
+          e.preventDefault()
+          if (currentTool === 'slab') {
+            emitter.emit('slab:commit' as never)
+          } else {
+            ed.setTool(null)
+            ed.setMode('select')
+            ed.setSelectedItem(null as never)
+            ed.setCatalogCategory(null)
+          }
+        }
       } else if (e.key === '1' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
         useEditor.getState().setPhase('site')

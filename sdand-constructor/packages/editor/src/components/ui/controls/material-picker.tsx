@@ -23,9 +23,13 @@ type MaterialPickerProps = {
 }
 
 function getCategoryLabel(category: (typeof MATERIAL_CATEGORIES)[number]) {
+  if (category === 'other') return 'ПОКРАСКА'
   if (category === 'roof') return 'Roofing'
   return category.charAt(0).toUpperCase() + category.slice(1)
 }
+
+/** Категории, видимые пользователю: скрываем wood/flooring/roof, оставляем только other */
+const VISIBLE_CATEGORIES = MATERIAL_CATEGORIES.filter((c) => c === 'other')
 
 export function MaterialPicker({
   value,
@@ -37,7 +41,7 @@ export function MaterialPicker({
   const setPaintPanelOpen = useEditor((state) => state.setPaintPanelOpen)
   const [showCustom, setShowCustom] = useState<boolean>(!!value?.properties)
   const [selectedCategory, setSelectedCategory] = useState<(typeof MATERIAL_CATEGORIES)[number]>(
-    MATERIAL_CATEGORIES[0],
+    'other',
   )
   const categoryScrollRef = useRef<HTMLDivElement>(null)
   const catalogItems =
@@ -120,7 +124,7 @@ export function MaterialPicker({
             style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}
           >
             <div className="flex min-w-max gap-1 pb-1">
-              {MATERIAL_CATEGORIES.map((category) => (
+              {VISIBLE_CATEGORIES.map((category) => (
                 <button
                   className={`shrink-0 px-2 font-medium text-[11px] uppercase tracking-[0.12em] transition-all ${
                     selectedCategory === category
